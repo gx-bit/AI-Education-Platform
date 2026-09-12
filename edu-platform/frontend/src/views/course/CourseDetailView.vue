@@ -42,7 +42,7 @@
           </span>
         </div>
         <el-button type="primary" size="large" style="width:100%" :loading="enrollLoading" @click="handleEnroll">
-          {{ enrolled ? '已加入学习' : '立即报名' }}
+          {{ enrolled ? '观看课程' : '立即报名' }}
         </el-button>
         <el-button class="favorite-button" size="large" :type="interaction.favorite ? 'warning' : 'default'"
           :loading="favoriteLoading" @click="toggleFavorite">
@@ -143,10 +143,16 @@ async function loadCourse() {
   try {
     const res = await courseApi.getCourseById(route.params.id)
     course.value = res.data
-    await Promise.all([loadInteraction(), loadReviews()])
+    await Promise.all([loadInteraction(), loadReviews(), checkPurchased()])
   } finally {
     loading.value = false
   }
+}
+
+async function checkPurchased() {
+  if (!userStore.isLoggedIn) { enrolled.value = false; return }
+  const res = await orderApi.checkPurchased(route.params.id)
+  enrolled.value = Boolean(res.data?.paid)
 }
 
 async function loadInteraction() {
@@ -207,7 +213,11 @@ const formatDate = value => value ? new Date(value).toLocaleString('zh-CN') : ''
 
 async function handleEnroll() {
   if (!userStore.isLoggedIn) { router.push('/auth/login'); return }
-  if (enrolled.value) { router.push('/orders'); return }
+  if (enrolled.value) {
+    recordBehavior('start_learning')
+    window.open(`/api/course/${course.value.id}/goto`, '_blank')
+    return
+  }
   enrollLoading.value = true
   try {
     const res = await orderApi.createOrder({ courseId: course.value.id })

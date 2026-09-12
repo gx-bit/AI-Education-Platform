@@ -53,6 +53,8 @@ public class OrderPaidConsumer {
                     username, courseTitle, orderNo, amount
             ));
             notification.setType("order");
+            Object orderId = event.get("orderId");
+            if (orderId != null) notification.setRelatedId(Long.parseLong(orderId.toString()));
             notification.setIsRead(0);
             notification.setCreatedAt(LocalDateTime.now());
             notificationMapper.insert(notification);

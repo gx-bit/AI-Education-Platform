@@ -98,9 +98,9 @@ const courseStore = useCourseStore()
 const searchKeyword = ref('')
 const aiLoading = ref(false)
 const recommendForm = reactive({
-  interest: 'Java 后端',
+  interest: '',
   level: 'beginner',
-  goal: '完成课程项目并入门微服务',
+  goal: '',
   limit: 3
 })
 

@@ -13,7 +13,7 @@ const request = axios.create({
 request.interceptors.request.use(
   config => {
     NProgress.start()
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token')
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
     }
@@ -35,6 +35,9 @@ request.interceptors.response.use(
       if (res.code === 401) {
         localStorage.removeItem('token')
         localStorage.removeItem('userInfo')
+        localStorage.removeItem('rememberLogin')
+        sessionStorage.removeItem('token')
+        sessionStorage.removeItem('userInfo')
         router.push('/login')
       }
       return Promise.reject(new Error(res.message))
@@ -54,6 +57,9 @@ request.interceptors.response.use(
     if (status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('userInfo')
+      localStorage.removeItem('rememberLogin')
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('userInfo')
       router.push('/login')
     }
     return Promise.reject(error)

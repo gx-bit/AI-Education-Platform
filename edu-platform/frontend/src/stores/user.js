@@ -5,10 +5,10 @@ import router from '@/router'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    token: localStorage.getItem('token') || '',
+    token: sessionStorage.getItem('token') || localStorage.getItem('token') || '',
     userInfo: (() => {
       try {
-        const raw = localStorage.getItem('userInfo');
+        const raw = sessionStorage.getItem('userInfo') || localStorage.getItem('userInfo');
         return raw && raw !== 'undefined' ? JSON.parse(raw) : null;
       } catch {
         return null;
@@ -25,12 +25,18 @@ export const useUserStore = defineStore('user', {
   },
 
   actions: {
-    async login(credentials) {
+    async login(credentials, remember = false) {
       const res = await userApi.login(credentials)
       this.token = res.data.accessToken
       this.userInfo = res.data.userInfo
-      localStorage.setItem('token', this.token)
-      localStorage.setItem('userInfo', JSON.stringify(this.userInfo))
+      const storage = remember ? localStorage : sessionStorage
+      const otherStorage = remember ? sessionStorage : localStorage
+      storage.setItem('token', this.token)
+      storage.setItem('userInfo', JSON.stringify(this.userInfo))
+      otherStorage.removeItem('token')
+      otherStorage.removeItem('userInfo')
+      if (remember) localStorage.setItem('rememberLogin', 'true')
+      else localStorage.removeItem('rememberLogin')
       ElMessage.success('登录成功')
     },
 
@@ -42,6 +48,9 @@ export const useUserStore = defineStore('user', {
         this.userInfo = null
         localStorage.removeItem('token')
         localStorage.removeItem('userInfo')
+        localStorage.removeItem('rememberLogin')
+        sessionStorage.removeItem('token')
+        sessionStorage.removeItem('userInfo')
         router.push('/login')
         ElMessage.success('已退出登录')
       }
@@ -50,12 +59,17 @@ export const useUserStore = defineStore('user', {
     async fetchProfile() {
       const res = await userApi.getProfile()
       this.userInfo = res.data
-      localStorage.setItem('userInfo', JSON.stringify(this.userInfo))
+      this.persistUserInfo()
     },
 
     updateUserInfo(info) {
       this.userInfo = { ...this.userInfo, ...info }
-      localStorage.setItem('userInfo', JSON.stringify(this.userInfo))
+      this.persistUserInfo()
+    },
+
+    persistUserInfo() {
+      const storage = localStorage.getItem('rememberLogin') === 'true' ? localStorage : sessionStorage
+      storage.setItem('userInfo', JSON.stringify(this.userInfo))
     }
   }
 })

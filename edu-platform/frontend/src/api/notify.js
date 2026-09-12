@@ -13,5 +13,6 @@ export const notifyApi = {
   getMyNotifications: params => request.get('/notify/my', { params: normalizePageParams(params) }),
   markAsRead: id => request.put(`/notify/${id}/read`),
   markAllAsRead: () => request.put('/notify/read-all'),
-  getUnreadCount: () => request.get('/notify/unread-count')
+  getUnreadCount: () => request.get('/notify/unread-count'),
+  deleteNotification: id => request.delete(`/notify/${id}`)
 }

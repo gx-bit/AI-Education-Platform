@@ -56,14 +56,14 @@
     </el-footer>
 
     <!-- 通知抽屉 -->
-    <el-drawer v-model="showNotify" title="我的通知" size="380px">
-      <NotificationPanel />
+    <el-drawer v-model="showNotify" title="我的通知" size="420px">
+      <NotificationPanel @unread-change="unreadCount = $event" />
     </el-drawer>
   </el-container>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { notifyApi } from '@/api/notify'
@@ -98,6 +98,7 @@ function handleCommand(cmd) {
 }
 
 loadUnreadCount()
+watch(showNotify, value => { if (value) loadUnreadCount() })
 </script>
 
 <style scoped>
