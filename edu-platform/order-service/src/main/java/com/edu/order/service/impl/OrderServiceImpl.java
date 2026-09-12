@@ -168,16 +168,33 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (order.getAmount() == null || order.getAmount().compareTo(paidAmount) != 0) {
             throw new BusinessException("支付金额与订单金额不一致");
         }
-        if (order.getStatus() == 1) return true;
+        completeProviderPayment(order, "alipay", providerTradeNo);
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Order completeMockPayment(Long orderId, Long userId) {
+        Order order = getOrderById(orderId, userId);
+        if (order.getStatus() == 1) return order;
+        completeProviderPayment(order, "mock", "MOCK-" + order.getOrderNo());
+        return getById(orderId);
+    }
+
+    private void completeProviderPayment(Order order, String payMethod, String providerTradeNo) {
+        if (order.getStatus() == 1) return;
         if (order.getStatus() != 0) throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
 
         LocalDateTime paidAt = LocalDateTime.now();
         boolean changed = update(new LambdaUpdateWrapper<Order>()
                 .eq(Order::getId, order.getId()).eq(Order::getStatus, 0)
                 .set(Order::getStatus, 1).set(Order::getPaidAt, paidAt)
-                .set(Order::getPayMethod, "alipay").set(Order::getProviderTradeNo, providerTradeNo));
-        if (!changed) return getById(order.getId()).getStatus() == 1;
-        order.setStatus(1); order.setPaidAt(paidAt); order.setPayMethod("alipay"); order.setProviderTradeNo(providerTradeNo);
+                .set(Order::getPayMethod, payMethod).set(Order::getProviderTradeNo, providerTradeNo));
+        if (!changed) {
+            if (getById(order.getId()).getStatus() == 1) return;
+            throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
+        }
+        order.setStatus(1); order.setPaidAt(paidAt); order.setPayMethod(payMethod); order.setProviderTradeNo(providerTradeNo);
 
         try { courseFeign.incrementStudentCount(order.getCourseId()); }
         catch (Exception e) { log.warn("更新课程学员数失败: {}", e.getMessage()); }
@@ -186,7 +203,6 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 .username(order.getUsername()).courseId(order.getCourseId()).courseTitle(order.getCourseTitle())
                 .amount(order.getAmount()).paidAt(paidAt).build();
         rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_PAID_ROUTING_KEY, event);
-        return true;
     }
 
     @Override

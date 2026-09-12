@@ -20,6 +20,8 @@ public interface OrderService {
 
     boolean completeAlipayPayment(String orderNo, String providerTradeNo, java.math.BigDecimal paidAmount);
 
+    Order completeMockPayment(Long orderId, Long userId);
+
     void cancelOrder(Long orderId, Long userId);
 
     PageResult<Order> listAllOrders(Integer status, int page, int size);

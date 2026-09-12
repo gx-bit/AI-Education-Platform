@@ -71,7 +71,7 @@ public class AlipayPaymentService {
         if (!properties.isMockEnabled()) {
             throw new BusinessException("本地沙箱支付未启用");
         }
-        return orderService.payOrder(orderId, userId);
+        return orderService.completeMockPayment(orderId, userId);
     }
 
     public boolean handleNotification(Map<String, String[]> requestParameters) {

@@ -24,13 +24,14 @@ import { orderApi } from '@/api/order'
 const route = useRoute()
 const router = useRouter()
 const paying = ref(false)
-const orderId = computed(() => Number(route.query.orderId))
+// Snowflake IDs exceed JavaScript's safe integer range; keep the ID as a string.
+const orderId = computed(() => String(route.query.orderId || ''))
 const orderNo = computed(() => route.query.orderNo || '-')
 const amount = computed(() => Number(route.query.amount || 0).toFixed(2))
 const title = computed(() => route.query.title || '在线课程')
 
 async function confirmPay() {
-  if (!orderId.value) return ElMessage.error('订单信息无效')
+  if (!/^\d+$/.test(orderId.value)) return ElMessage.error('订单信息无效')
   paying.value = true
   try {
     await orderApi.confirmMockPayment(orderId.value)
