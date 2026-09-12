@@ -1,358 +1,216 @@
-# edu-platform — 在线教育微服务平台
+# AI智慧教育平台
 
-基于 Spring Boot 3 + Spring Cloud 的生产级微服务在线教育平台，集成 AI 课程推荐、MCP 工具服务与完整 CI/CD 流水线。
+基于 Spring Boot、Spring Cloud 与 Vue 3 构建的前后端分离在线教育平台。项目采用微服务架构，提供用户与课程管理、个性化课程推荐、订单与支付宝支付、站内通知、数据统计、链路追踪及 Docker Compose 一键部署能力。
 
----
+仓库地址：[github.com/gx-bit/AI-Education-Platform](https://github.com/gx-bit/AI-Education-Platform)
 
-## 架构总览
+## 核心功能
+
+- 用户注册、登录、JWT 鉴权、个人资料与密码管理
+- 课程列表、详情、分类、关键词筛选及多维排序
+- 管理员课程发布、下架、编辑、删除和用户管理
+- 基于用户行为、内容相关度、热度与评分的个性化课程推荐
+- 推荐曝光、点击、购买等行为记录及可解释推荐理由
+- 课程订单创建、查询、取消和支付状态查询
+- 支付宝电脑网站支付、RSA2 回调验签和幂等处理
+- RabbitMQ 异步事件与站内通知
+- 管理后台和 ECharts 数据统计
+- Swagger/OpenAPI 接口文档与 Zipkin 分布式链路追踪
+- MCP 工具服务，可供 Claude Desktop 等 AI Agent 调用平台接口
+
+## AI 推荐实现
+
+当前前端主要使用独立的 `recommendation-service`。它不是简单返回固定课程，也没有自行训练深度学习模型，而是采用混合推荐策略：
+
+1. 采集曝光、点击、收藏、下单、购买、学习进度、完成、评分和搜索行为。
+2. 将兴趣、目标、课程标题、描述、标签等文本转换为 384 维哈希特征向量。
+3. 使用余弦相似度计算查询意图和用户画像与课程的匹配程度。
+4. 按语义相关度 40%、用户画像 25%、课程热度 20%、课程质量 15% 加权排序。
+5. 进行分类多样性重排，并记录推荐曝光、点击和购买结果。
+
+`course-service` 中同时保留了 Anthropic Claude API 推荐客户端，可作为大模型推荐能力；未配置 API Key 或调用失败时会降级到本地结果。
+
+## 系统架构
 
 ```mermaid
-graph TD
-    subgraph Client
-        FE[Vue 3 前端<br/>:80]
-        AI[AI Agent / Claude Desktop<br/>MCP Client]
-    end
+flowchart TD
+    FE[Vue 3 前端] --> NG[Nginx :80]
+    NG --> GW[Spring Cloud Gateway :8080]
+    GW --> US[user-service :8081]
+    GW --> CS[course-service :8082]
+    GW --> OS[order-service :8083]
+    GW --> NS[notification-service :8084]
+    GW --> RS[recommendation-service :8085]
 
-    subgraph Gateway
-        GW[gateway-service<br/>Spring Cloud Gateway<br/>:8080]
-    end
+    US --> MYSQL[(MySQL 8)]
+    CS --> MYSQL
+    OS --> MYSQL
+    NS --> MYSQL
+    RS --> MYSQL
+    US --> REDIS[(Redis 7)]
+    CS --> REDIS
+    GW --> REDIS
+    OS --> MQ[RabbitMQ]
+    MQ --> NS
+    OS --> ALIPAY[支付宝开放平台]
 
-    subgraph Services
-        US[user-service<br/>:8081]
-        CS[course-service<br/>:8082]
-        OS[order-service<br/>:8083]
-        NS[notification-service<br/>:8084]
-    end
-
-    subgraph Infrastructure
-        NC[Nacos<br/>注册中心 + 配置中心<br/>:8848]
-        MQ[RabbitMQ<br/>消息队列<br/>:5672]
-        MY[(MySQL<br/>:3306)]
-        RD[(Redis<br/>:6379)]
-        ZP[Zipkin<br/>链路追踪<br/>:9411]
-    end
-
-    subgraph MCP
-        MCP[edu-platform MCP Server<br/>Node.js stdio]
-    end
-
-    FE -->|HTTP| GW
-    AI -->|stdio| MCP
-    MCP -->|HTTP + JWT| GW
-
-    GW -->|路由 + JWT验证| US
-    GW -->|路由| CS
-    GW -->|路由| OS
-    GW -->|路由| NS
-
-    US --> MY
-    US --> RD
-    CS --> MY
-    CS -->|WebClient AI推荐| Claude[(Claude API)]
-    OS --> MY
-    OS -->|发布事件| MQ
-    MQ -->|消费| NS
-    NS --> MY
-
-    US --> NC
-    CS --> NC
-    OS --> NC
-    NS --> NC
-    GW --> NC
-
-    US --> ZP
-    CS --> ZP
-    OS --> ZP
-    NS --> ZP
+    GW -.服务发现.-> NACOS[Nacos]
+    US -.链路追踪.-> ZIPKIN[Zipkin]
+    CS -.链路追踪.-> ZIPKIN
+    OS -.链路追踪.-> ZIPKIN
 ```
-
----
 
 ## 服务说明
 
-| 服务 | 端口 | 职责 |
-|------|------|------|
-| gateway-service | 8080 | API 网关，JWT 鉴权，请求路由，熔断降级 |
-| user-service | 8081 | 用户注册/登录，JWT 签发，用户管理 |
-| course-service | 8082 | 课程 CRUD，分类管理，Claude AI 推荐 |
-| order-service | 8083 | 订单创建/支付模拟，消息发布 |
-| notification-service | 8084 | 站内通知，消费 RabbitMQ 事件 |
-| recommendation-service | 8085 | 行为采集、用户画像、混合召回、排序与推荐反馈闭环 |
-| frontend | 80 | Vue 3 + Element Plus 管理前端 |
-| mcp-server | stdio | MCP 工具服务，供 AI Agent 调用 |
-
----
+| 服务 | 容器端口 | 主要职责 |
+| --- | ---: | --- |
+| `gateway-service` | 8080 | API 路由、JWT 鉴权、Redis 限流 |
+| `user-service` | 8081 | 用户认证、资料与后台用户管理 |
+| `course-service` | 8082 | 课程、分类、搜索及 Claude 推荐能力 |
+| `order-service` | 8083 | 订单、免费课程与支付宝支付 |
+| `notification-service` | 8084 | RabbitMQ 消费和站内通知 |
+| `recommendation-service` | 8085 | 行为采集、用户画像、混合排序与反馈闭环 |
+| `frontend` | 80 | Vue 3 用户端与管理端页面 |
+| `mcp-server` | stdio | 面向 AI Agent 的可选 MCP 工具服务 |
 
 ## 技术栈
 
 | 层次 | 技术 |
-|------|------|
-| 框架 | Spring Boot 3.2.4 / Spring Cloud 2023.0.1 |
-| 服务注册/配置 | Nacos 2.x |
-| 网关 | Spring Cloud Gateway + Resilience4j |
-| 认证 | JWT (jjwt 0.12.5) |
-| ORM | MyBatis-Plus 3.5.5 |
-| 缓存 | Redis (Spring Data Redis) |
-| 消息队列 | RabbitMQ (Spring AMQP) |
-| 分布式追踪 | Micrometer + Zipkin |
-| AI 推荐 | Claude API (claude-sonnet-4-6) via WebClient |
-| MCP 服务 | @modelcontextprotocol/sdk 1.x (Node.js) |
-| 前端 | Vue 3 + Vite + Element Plus + Pinia |
-| 容器化 | Docker + Docker Compose |
-| CI/CD | Jenkins Declarative Pipeline |
-
----
+| --- | --- |
+| 后端 | Java 17、Spring Boot 3.2.4、Spring Cloud 2023.0.1 |
+| 微服务 | Spring Cloud Gateway、Nacos、OpenFeign、LoadBalancer、Resilience4j |
+| 数据访问 | MySQL 8、MyBatis-Plus 3.5.7 |
+| 缓存与限流 | Redis 7、Spring Data Redis |
+| 消息队列 | RabbitMQ 3.12、Spring AMQP |
+| 安全 | Spring Security、JWT / JJWT 0.12.5 |
+| AI 推荐 | 混合推荐算法、余弦相似度、用户行为画像、Anthropic Claude API（可选） |
+| 支付 | 支付宝 Java SDK、电脑网站支付、RSA2 验签 |
+| 前端 | Vue 3、Vite 5、Element Plus、Pinia、Axios、ECharts |
+| 可观测性 | Micrometer Tracing、Brave、Zipkin、SpringDoc OpenAPI |
+| 部署 | Docker、Docker Compose、Nginx、Jenkins、SonarQube |
 
 ## 快速启动
 
-### 前置条件
+### 环境要求
 
-- Docker & Docker Compose v2
-- JDK 17+（本地开发）
-- Node.js 18+（MCP Server 本地运行）
-- Maven 3.8+（本地构建）
+- Docker 与 Docker Compose v2
+- JDK 17 和 Maven 3.8+（本地编译时需要）
+- Node.js 20+（前端或 MCP 本地开发时需要）
 
-### 1. 克隆仓库
+### 1. 克隆项目
 
 ```bash
-git clone <your-repo-url>
-cd edu-platform
+git clone git@github.com:gx-bit/AI-Education-Platform.git
+cd AI-Education-Platform/edu-platform
 ```
 
 ### 2. 配置环境变量
 
 ```bash
-cp .env.example .env          # 编辑数据库密码、JWT Secret 等
+cp .env.example .env
 ```
 
-`.env` 关键配置项：
+至少应修改 `.env` 中的 MySQL 密码和 JWT 密钥。Claude 与支付宝参数按需填写；不要将包含真实密钥的 `.env` 提交到 Git。
 
-```env
-MYSQL_PASSWORD=your_password
-JWT_SECRET=your_jwt_secret_min_32_chars
-NACOS_NAMESPACE=                # optional; leave empty for public namespace
-ANTHROPIC_API_KEY=sk-ant-...    # optional; course-service AI recommendations
-```
-
-### 3. 一键启动所有服务
+### 3. 构建并启动
 
 ```bash
-mvn -DskipTests package
+mvn clean package -DskipTests
 docker compose up -d --build
 ```
 
-启动顺序（由 `depends_on` + healthcheck 保证）：
+### 4. 访问服务
 
-```
-MySQL / Redis / RabbitMQ / Nacos
-    → user-service / course-service / order-service / notification-service
-        → gateway-service
-            → frontend
-```
+| 入口 | 本机地址 |
+| --- | --- |
+| Web 前端 | <http://localhost> |
+| API 网关 | <http://localhost:18080> |
+| Nacos 控制台 | <http://localhost:8848/nacos> |
+| RabbitMQ 管理台 | <http://localhost:15672> |
+| Zipkin | <http://localhost:19411> |
 
-### 4. 验证服务健康
-
-```bash
-# 网关健康检查
-curl http://localhost:8080/actuator/health
-
-# 用户服务（通过网关路由）
-curl http://localhost:8081/actuator/health
-```
-
-### 5. 访问入口
-
-| 入口 | 地址 |
-|------|------|
-| 前端 | http://localhost |
-| API 网关 | http://localhost:8080 |
-| Nacos 控制台 | http://localhost:8848/nacos（nacos/nacos） |
-| RabbitMQ 管理 | http://localhost:15672（edu/edu123456） |
-| Zipkin 链路 | http://localhost:9411 |
-
----
-
-## API 快速参考
-
-### 认证
+查看容器状态或停止服务：
 
 ```bash
-# 注册
-POST http://localhost:8080/api/user/register
-{
-  "username": "test",
-  "password": "Test@1234",
-  "email": "test@example.com"
-}
-
-# 登录（返回 JWT）
-POST http://localhost:8080/api/user/login
-{
-  "username": "test",
-  "password": "Test@1234"
-}
+docker compose ps
+docker compose down
 ```
 
-### 课程
+## 支付宝支付配置
 
-```bash
-# 搜索课程
-GET http://localhost:8080/api/course/list?keyword=Java&page=1&size=10
+付费订单通过支付宝电脑网站支付完成。系统只在支付宝异步通知通过 RSA2 验签，并校验应用、商户、订单号与金额后更新支付状态。建议首先使用支付宝沙箱。
 
-# AI 推荐
-GET http://localhost:8080/api/course/recommend?interest=Java
-Authorization: Bearer <JWT>
+在 `.env` 中配置：
+
+```env
+ALIPAY_ENABLED=true
+ALIPAY_GATEWAY_URL=https://openapi.alipaydev.com/gateway.do
+ALIPAY_APP_ID=
+ALIPAY_MERCHANT_PRIVATE_KEY=
+ALIPAY_PUBLIC_KEY=
+ALIPAY_SELLER_ID=
+ALIPAY_NOTIFY_URL=https://your-domain/api/order/payment/alipay/notify
+ALIPAY_RETURN_URL=http://localhost/payment/result
 ```
 
-### 订单
-
-```bash
-# 创建订单
-POST http://localhost:8080/api/order/create
-Authorization: Bearer <JWT>
-{
-  "courseId": 1
-}
-```
-
----
-
-## MCP Server（AI Agent 集成）
-
-MCP Server 将平台核心接口封装为 MCP 工具，供 Claude Desktop 或其他 AI Agent 调用。
-
-### 启动 MCP Server
-
-```bash
-cd mcp-server
-npm install
-cp .env.example .env    # 填写 GATEWAY_URL 和 PLATFORM_TOKEN
-npm start
-```
-
-### 集成到 Claude Desktop
-
-将 `mcp-config.example.json` 内容合并到 Claude Desktop 配置文件：
-
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "edu-platform": {
-      "command": "node",
-      "args": ["/absolute/path/to/mcp-server/src/index.js"],
-      "env": {
-        "GATEWAY_URL": "http://localhost:8080",
-        "PLATFORM_TOKEN": "<管理员JWT>"
-      }
-    }
-  }
-}
-```
-
-### 可用 MCP 工具
-
-| 工具 | 描述 |
-|------|------|
-| `search_courses` | 搜索课程（关键词/分类/难度/分页） |
-| `get_course_detail` | 获取课程完整详情 |
-| `get_course_categories` | 获取所有课程分类 |
-| `get_ai_recommendations` | 获取 AI 推荐课程列表 |
-| `get_order_stats` | 获取平台订单统计 |
-| `list_orders` | 查询订单列表（管理员） |
-| `list_users` | 查询用户列表（管理员） |
-| `get_user_detail` | 获取用户详情 |
-| `get_user_notifications` | 查询用户通知 |
-
----
+`ALIPAY_NOTIFY_URL` 必须是支付宝能够访问的公网 HTTPS 地址。已有数据库需先执行 `sql/migrate-alipay-payment.sql`。
 
 ## 本地开发
 
-### 编译所有模块
+后端全量测试：
 
 ```bash
-# 必须从根目录执行，确保 common 模块先安装到本地仓库
-mvn clean install -DskipTests -T 4
+mvn clean test
 ```
 
-### 单独启动某个服务
-
-```bash
-# 确保基础设施（MySQL/Redis/Nacos/RabbitMQ）已通过 docker compose 启动
-docker compose up -d mysql redis nacos rabbitmq
-
-# 启动 user-service
-cd user-service
-mvn spring-boot:run
-```
-
-### 前端开发模式
+前端开发：
 
 ```bash
 cd frontend
 npm install
-npm run dev    # http://localhost:5173（代理到 :8080）
+npm run dev
 ```
 
----
+只启动基础设施：
 
-## CI/CD（Jenkins）
+```bash
+docker compose up -d mysql redis rabbitmq nacos zipkin
+```
 
-`Jenkinsfile` 定义了完整的 7 阶段流水线：
+## MCP Server
 
-| 阶段 | 触发条件 | 说明 |
-|------|----------|------|
-| Checkout | 所有分支 | 拉取代码 |
-| Build & Test | 所有分支 | `mvn clean install`，发布测试报告 |
-| Code Quality | main | SonarQube 静态分析 |
-| Docker Build | 所有分支 | 并行构建 6 个镜像并推送到仓库 |
-| Deploy Staging | develop / main | SSH 部署到 Staging 环境 |
-| Smoke Test | develop / main | 健康检查验证 |
-| Deploy Production | main | **手动确认**后部署到生产 |
+`mcp-server` 将课程、订单、用户和通知等接口封装为 MCP 工具，可供 Claude Desktop 等兼容客户端使用。它不在默认 Docker Compose 服务中，需要单独启动：
 
-**Jenkins 需配置的 Credentials：**
+```bash
+cd mcp-server
+npm install
+cp .env.example .env
+npm start
+```
 
-| ID | 类型 | 用途 |
-|----|------|------|
-| `docker-registry-credentials` | Username/Password | 阿里云镜像仓库登录 |
-| `deploy-server-ssh` | SSH Private Key | 部署服务器 SSH 密钥 |
+配置示例见 `mcp-server/mcp-config.example.json`。
 
----
+## CI/CD
+
+`Jenkinsfile` 定义了代码检出、Maven 构建与测试、SonarQube 分析、Docker 镜像构建、阿里云镜像仓库推送、测试环境部署、冒烟测试和生产环境人工确认等阶段。
 
 ## 项目结构
 
-```
+```text
 edu-platform/
-├── common/
-│   ├── common-core/          # 通用工具、响应封装、异常处理
-│   └── common-security/      # JWT 工具类、安全注解
-├── gateway-service/          # Spring Cloud Gateway
-├── user-service/             # 用户认证与管理
-├── course-service/           # 课程与 AI 推荐
-├── order-service/            # 订单与支付
-├── notification-service/     # 站内通知
-├── frontend/                 # Vue 3 前端
-├── mcp-server/               # MCP 工具服务 (Node.js)
-│   ├── src/index.js
-│   ├── package.json
-│   └── .env.example
+├── common/                    # 公共响应、安全与用户上下文
+├── gateway-service/           # API 网关
+├── user-service/              # 用户服务
+├── course-service/            # 课程服务
+├── order-service/             # 订单与支付服务
+├── notification-service/      # 通知服务
+├── recommendation-service/    # 个性化推荐服务
+├── frontend/                  # Vue 3 前端
+├── mcp-server/                # 可选 MCP 工具服务
+├── sql/                       # 初始化与迁移脚本
 ├── docker-compose.yml
-├── Jenkinsfile
-├── .gitignore
-└── README.md
+└── Jenkinsfile
 ```
-
----
-
-## 支付宝支付配置
-
-付费订单通过支付宝电脑网站支付完成。订单只有在支付宝异步通知通过 RSA2
-验签，并校验应用、商户、订单号和金额后才会更新为已支付。首次接入请使用
-`.env.example` 中的沙箱配置；`ALIPAY_NOTIFY_URL` 必须是公网可访问的 HTTPS 地址。
-
-已有数据库需要先执行 `sql/migrate-alipay-payment.sql`。
 
 ## License
 
