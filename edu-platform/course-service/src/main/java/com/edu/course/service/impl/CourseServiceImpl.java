@@ -187,6 +187,9 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                 Current level: %s
                 Learning goal: %s
 
+                Ranking priority (strict): learning interest 45%%, learning goal 40%%, current level 5%%,
+                course quality and popularity 10%%. Never rank an unrelated course first merely because its level matches.
+
                 Return exactly %d recommendations as JSON only:
                 [{"id": 1, "reason": "reason within 50 Chinese characters", "matchScore": 95}]
                 """,
@@ -222,7 +225,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
 
         return courses.stream()
                 .peek(course -> {
-                    int score = 70;
+                    int score = 60;
                     String haystack = String.join(" ",
                             safe(course.getTitle()),
                             safe(course.getDescription()),
@@ -233,12 +236,12 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                         score += 18;
                     }
                     if (hasText(normalizedLevel) && normalizedLevel.equals(course.getLevel())) {
-                        score += 8;
+                        score += 3;
                     }
                     if (hasText(normalizedGoal) && haystack.contains(normalizedGoal)) {
-                        score += 6;
+                        score += 17;
                     }
-                    score += Math.min(6, course.getStudentCount() == null ? 0 : course.getStudentCount() / 1000);
+                    score += Math.min(3, course.getStudentCount() == null ? 0 : course.getStudentCount() / 2000);
 
                     course.setMatchScore(Math.min(score, 99));
                     course.setRecommendReason(buildReason(interest, level, goal));

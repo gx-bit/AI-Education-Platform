@@ -29,15 +29,16 @@ public class RecommendationService {
     private final UserBehaviorMapper behaviorMapper;
     private final RecommendationLogMapper logMapper;
 
-    @Value("${recommendation.semantic-weight:0.40}") private double semanticWeight;
-    @Value("${recommendation.profile-weight:0.25}") private double profileWeight;
-    @Value("${recommendation.popularity-weight:0.20}") private double popularityWeight;
-    @Value("${recommendation.quality-weight:0.15}") private double qualityWeight;
+    @Value("${recommendation.interest-weight:0.36}") private double interestWeight;
+    @Value("${recommendation.goal-weight:0.34}") private double goalWeight;
+    @Value("${recommendation.profile-weight:0.12}") private double profileWeight;
+    @Value("${recommendation.popularity-weight:0.10}") private double popularityWeight;
+    @Value("${recommendation.quality-weight:0.08}") private double qualityWeight;
+    @Value("${recommendation.level-bonus:0.03}") private double levelBonus;
 
     @Transactional
     public RecommendationResponse recommend(Long userId, RecommendationRequest request) {
         String requestId = UUID.randomUUID().toString();
-        String queryText = join(request.getInterest(), request.getLevel(), request.getGoal());
         List<CourseSnapshot> courses = courseMapper.selectList(new LambdaQueryWrapper<CourseSnapshot>()
                 .eq(CourseSnapshot::getStatus, 1)
                 .orderByDesc(CourseSnapshot::getStudentCount));
@@ -48,19 +49,23 @@ public class RecommendationService {
                 .map(UserBehavior::getCourseId).collect(Collectors.toSet());
         Map<Long, CourseSnapshot> byId = courses.stream().collect(Collectors.toMap(CourseSnapshot::getId, c -> c));
         String profileText = buildProfileText(behaviors, byId);
-        double[] queryVector = vectorize(queryText);
+        double[] interestVector = vectorize(request.getInterest());
+        double[] goalVector = vectorize(request.getGoal());
         double[] profileVector = vectorize(profileText);
         int maxStudents = courses.stream().map(CourseSnapshot::getStudentCount).filter(Objects::nonNull).max(Integer::compareTo).orElse(1);
 
         List<Scored> scored = courses.stream().filter(c -> !purchased.contains(c.getId())).map(c -> {
             double[] courseVector = vectorize(courseText(c));
-            double semantic = hasText(queryText) ? cosine(queryVector, courseVector) : 0.5;
+            double interest = hasText(request.getInterest()) ? cosine(interestVector, courseVector) : 0.5;
+            double goal = hasText(request.getGoal()) ? cosine(goalVector, courseVector) : 0.5;
             double profile = hasText(profileText) ? cosine(profileVector, courseVector) : 0.5;
-            if (hasText(request.getLevel()) && request.getLevel().equals(c.getLevel())) profile = Math.min(1, profile + 0.18);
             double popularity = Math.log1p(nvl(c.getStudentCount())) / Math.log1p(Math.max(1, maxStudents));
             double quality = c.getRating() == null ? 0.5 : c.getRating().doubleValue() / 5.0;
-            double total = semantic * semanticWeight + profile * profileWeight + popularity * popularityWeight + quality * qualityWeight;
-            return new Scored(c, clamp(semantic), clamp(profile), clamp(popularity), clamp(quality), clamp(total));
+            double levelFit = hasText(request.getLevel()) && request.getLevel().equals(c.getLevel()) ? 1.0 : 0.0;
+            double total = interest * interestWeight + goal * goalWeight + profile * profileWeight
+                    + popularity * popularityWeight + quality * qualityWeight + levelFit * levelBonus;
+            return new Scored(c, clamp(interest), clamp(goal), clamp(profile), levelFit,
+                    clamp(popularity), clamp(quality), clamp(total));
         }).sorted(Comparator.comparingDouble(Scored::total).reversed()).toList();
 
         List<Scored> selected = diversify(scored, request.getLimit() == null ? 6 : request.getLimit());
@@ -77,7 +82,7 @@ public class RecommendationService {
             logMapper.insert(log);
         }
         return RecommendationResponse.builder().requestId(requestId)
-                .strategy("hybrid-content-profile-popularity-v1")
+                .strategy("intent-first-interest-goal-v2")
                 .personalized(userId != null && !behaviors.isEmpty()).courses(results).build();
     }
 
@@ -138,15 +143,17 @@ public class RecommendationService {
                 .coverImage(c.getCoverImage()).linkUrl(c.getLinkUrl()).teacherId(c.getTeacherId()).teacherName(c.getTeacherName())
                 .categoryId(c.getCategoryId()).price(c.getPrice()).duration(c.getDuration()).level(c.getLevel()).status(c.getStatus())
                 .studentCount(c.getStudentCount()).rating(c.getRating()).tags(c.getTags()).recommendReason(reason)
-                .matchScore(percent(s.total())).scoreDetails(Map.of("semantic", percent(s.semantic()), "profile", percent(s.profile()),
+                .matchScore(percent(s.total())).scoreDetails(Map.of("interest", percent(s.interest()), "goal", percent(s.goal()),
+                        "profile", percent(s.profile()), "level", percent(s.levelFit()),
                         "popularity", percent(s.popularity()), "quality", percent(s.quality()))).build();
     }
 
     private String reason(Scored s, RecommendationRequest r, boolean personalized) {
         List<String> parts = new ArrayList<>();
-        if (s.semantic() >= .55 && hasText(r.getInterest())) parts.add("与“" + r.getInterest() + "”语义相关");
-        if (hasText(r.getLevel()) && r.getLevel().equals(s.course().getLevel())) parts.add("难度匹配当前水平");
+        if (s.interest() >= .55 && hasText(r.getInterest())) parts.add("贴合学习兴趣“" + r.getInterest() + "”");
+        if (s.goal() >= .55 && hasText(r.getGoal())) parts.add("有助于实现“" + r.getGoal() + "”");
         if (personalized && s.profile() >= .55) parts.add("符合你的历史学习偏好");
+        if (parts.size() < 2 && s.levelFit() > 0) parts.add("难度适合当前水平");
         if (s.quality() >= .9) parts.add("课程评分较高");
         if (parts.isEmpty()) parts.add("综合课程质量与热度推荐");
         return String.join("，", parts);
@@ -180,5 +187,6 @@ public class RecommendationService {
     private int nvl(Integer v) { return v == null ? 0 : v; }
     private double clamp(double v) { return Math.max(0, Math.min(1, v)); }
     private int percent(double v) { return (int)Math.round(clamp(v) * 100); }
-    private record Scored(CourseSnapshot course, double semantic, double profile, double popularity, double quality, double total) {}
+    private record Scored(CourseSnapshot course, double interest, double goal, double profile, double levelFit,
+                          double popularity, double quality, double total) {}
 }

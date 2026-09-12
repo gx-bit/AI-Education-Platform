@@ -25,10 +25,12 @@ class RecommendationServiceTest {
         behaviorMapper = mock(UserBehaviorMapper.class);
         logMapper = mock(RecommendationLogMapper.class);
         service = new RecommendationService(courseMapper, behaviorMapper, logMapper);
-        ReflectionTestUtils.setField(service, "semanticWeight", .40);
-        ReflectionTestUtils.setField(service, "profileWeight", .25);
-        ReflectionTestUtils.setField(service, "popularityWeight", .20);
-        ReflectionTestUtils.setField(service, "qualityWeight", .15);
+        ReflectionTestUtils.setField(service, "interestWeight", .36);
+        ReflectionTestUtils.setField(service, "goalWeight", .34);
+        ReflectionTestUtils.setField(service, "profileWeight", .12);
+        ReflectionTestUtils.setField(service, "popularityWeight", .10);
+        ReflectionTestUtils.setField(service, "qualityWeight", .08);
+        ReflectionTestUtils.setField(service, "levelBonus", .03);
         when(logMapper.insert(any(RecommendationLog.class))).thenReturn(1);
     }
 
@@ -63,6 +65,24 @@ class RecommendationServiceTest {
 
         assertTrue(response.isPersonalized());
         assertEquals(List.of(2L), response.getCourses().stream().map(RecommendedCourse::getId).toList());
+    }
+
+    @Test
+    void interestAndGoalOutrankLevelOnlyMatch() {
+        when(courseMapper.selectList(any())).thenReturn(List.of(
+                course(1L, "Java Spring 微服务实战", "构建后端求职项目", "Java,Spring,微服务", "intermediate", 100, "4.8"),
+                course(2L, "摄影基础", "相机构图与后期", "摄影,艺术", "beginner", 100, "4.8")));
+
+        RecommendationRequest request = new RecommendationRequest();
+        request.setInterest("Java Spring");
+        request.setGoal("微服务后端求职项目");
+        request.setLevel("beginner");
+        request.setLimit(1);
+
+        RecommendationResponse response = service.recommend(null, request);
+
+        assertEquals(1L, response.getCourses().get(0).getId());
+        assertEquals("intent-first-interest-goal-v2", response.getStrategy());
     }
 
     private CourseSnapshot course(Long id, String title, String description, String tags, String level, int students, String rating) {

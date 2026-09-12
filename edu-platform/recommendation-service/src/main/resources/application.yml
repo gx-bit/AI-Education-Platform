@@ -18,7 +18,9 @@ mybatis-plus:
       logic-delete-value: 1
       logic-not-delete-value: 0
 recommendation:
-  semantic-weight: 0.40
-  profile-weight: 0.25
-  popularity-weight: 0.20
-  quality-weight: 0.15
+  interest-weight: 0.36
+  goal-weight: 0.34
+  profile-weight: 0.12
+  popularity-weight: 0.10
+  quality-weight: 0.08
+  level-bonus: 0.03
