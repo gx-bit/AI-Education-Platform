@@ -2,6 +2,7 @@ package com.edu.course.controller;
 
 import com.edu.common.core.result.PageResult;
 import com.edu.common.core.result.Result;
+import com.edu.common.core.exception.BusinessException;
 import com.edu.common.security.context.UserContext;
 import com.edu.course.dto.*;
 import com.edu.course.entity.Category;
@@ -73,6 +74,7 @@ public class CourseController {
     @Operation(summary = "创建课程")
     @PostMapping
     public Result<CourseVO> createCourse(@Valid @RequestBody CourseRequest request) {
+        requireCourseManager();
         Long userId = UserContext.getCurrentUserId();
         String username = UserContext.getCurrentUsername();
         return Result.success("创建成功",
@@ -84,12 +86,14 @@ public class CourseController {
     public Result<CourseVO> updateCourse(
             @PathVariable("id") Long id,
             @Valid @RequestBody CourseRequest request) {
+        requireCourseManager();
         return Result.success("更新成功", courseService.updateCourse(id, request));
     }
 
     @Operation(summary = "发布课程")
     @PutMapping("/{id}/publish")
     public Result<Void> publishCourse(@PathVariable("id") Long id) {
+        requireCourseManager();
         courseService.publishCourse(id);
         return Result.success();
     }
@@ -97,6 +101,7 @@ public class CourseController {
     @Operation(summary = "下架课程")
     @PutMapping("/{id}/unpublish")
     public Result<Void> unpublishCourse(@PathVariable("id") Long id) {
+        requireCourseManager();
         courseService.unpublishCourse(id);
         return Result.success();
     }
@@ -104,6 +109,7 @@ public class CourseController {
     @Operation(summary = "删除课程")
     @DeleteMapping("/{id}")
     public Result<Void> deleteCourse(@PathVariable("id") Long id) {
+        requireCourseManager();
         courseService.deleteCourse(id);
         return Result.success();
     }
@@ -113,5 +119,12 @@ public class CourseController {
     public Result<Void> incrementStudentCount(@PathVariable("id") Long id) {
         courseService.incrementStudentCount(id);
         return Result.success();
+    }
+
+    private void requireCourseManager() {
+        String role = UserContext.getCurrentRole();
+        if (!"admin".equals(role) && !"teacher".equals(role)) {
+            throw new BusinessException(403, "仅管理员或讲师可以管理课程");
+        }
     }
 }

@@ -44,6 +44,10 @@
         <el-button type="primary" size="large" style="width:100%" :loading="enrollLoading" @click="handleEnroll">
           {{ enrolled ? '已加入学习' : '立即报名' }}
         </el-button>
+        <el-button class="favorite-button" size="large" :type="interaction.favorite ? 'warning' : 'default'"
+          :loading="favoriteLoading" @click="toggleFavorite">
+          {{ interaction.favorite ? '★ 已收藏' : '☆ 收藏课程' }}
+        </el-button>
         <div class="course-includes">
           <div><el-icon><VideoPlay /></el-icon> {{ course.duration }} 分钟视频</div>
           <div><el-icon><Trophy /></el-icon> 完课证书</div>
@@ -74,6 +78,26 @@
             </el-timeline-item>
           </el-timeline>
         </el-tab-pane>
+        <el-tab-pane :label="`学员评价 (${interaction.reviewCount || 0})`" name="reviews">
+          <div v-if="userStore.isLoggedIn" class="review-editor">
+            <h3>{{ interaction.myReview ? '修改我的评价' : '发表课程评价' }}</h3>
+            <el-rate v-model="reviewForm.rating" />
+            <el-input v-model="reviewForm.content" type="textarea" :rows="3" maxlength="1000"
+              show-word-limit placeholder="分享你的学习体验" />
+            <el-button type="primary" :loading="reviewSaving" @click="saveReview">提交评价</el-button>
+          </div>
+          <el-alert v-else title="登录后可以发表评价" type="info" :closable="false" />
+          <div class="review-summary">
+            <strong>{{ interaction.averageRating || course.rating }}</strong>
+            <el-rate :model-value="Number(interaction.averageRating || course.rating)" disabled />
+          </div>
+          <div v-for="review in reviews" :key="review.id" class="review-item">
+            <div class="review-head"><strong>{{ review.username }}</strong><el-rate :model-value="review.rating" disabled size="small" /></div>
+            <p>{{ review.content }}</p>
+            <small>{{ formatDate(review.updatedAt) }}<el-tag v-if="review.mine" size="small">我的评价</el-tag></small>
+          </div>
+          <el-empty v-if="!reviews.length" description="暂无评价，来写第一条吧" />
+        </el-tab-pane>
       </el-tabs>
     </div>
   </div>
@@ -81,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { courseApi } from '@/api/course'
 import { orderApi } from '@/api/order'
@@ -97,6 +121,11 @@ const loading = ref(true)
 const enrollLoading = ref(false)
 const enrolled = ref(false)
 const activeTab = ref('intro')
+const interaction = ref({ favorite: false, favoriteCount: 0, reviewCount: 0, averageRating: null, myReview: null })
+const reviews = ref([])
+const favoriteLoading = ref(false)
+const reviewSaving = ref(false)
+const reviewForm = reactive({ rating: 5, content: '' })
 
 const levelMap = { beginner: { label: '入门', type: 'success' }, intermediate: { label: '中级', type: 'warning' }, advanced: { label: '高级', type: 'danger' } }
 const levelLabel = l => levelMap[l]?.label || l
@@ -114,10 +143,67 @@ async function loadCourse() {
   try {
     const res = await courseApi.getCourseById(route.params.id)
     course.value = res.data
+    await Promise.all([loadInteraction(), loadReviews()])
   } finally {
     loading.value = false
   }
 }
+
+async function loadInteraction() {
+  const res = await courseApi.getInteraction(route.params.id)
+  interaction.value = res.data
+  if (res.data.myReview) {
+    reviewForm.rating = res.data.myReview.rating
+    reviewForm.content = res.data.myReview.content
+  }
+}
+
+async function loadReviews() {
+  const res = await courseApi.getReviews(route.params.id, { page: 1, size: 20 })
+  reviews.value = res.data.records
+}
+
+async function toggleFavorite() {
+  if (!userStore.isLoggedIn) { router.push('/auth/login'); return }
+  favoriteLoading.value = true
+  try {
+    if (interaction.value.favorite) {
+      await courseApi.unfavoriteCourse(course.value.id)
+      interaction.value.favorite = false
+      interaction.value.favoriteCount = Math.max(0, interaction.value.favoriteCount - 1)
+      ElMessage.success('已取消收藏')
+    } else {
+      await courseApi.favoriteCourse(course.value.id)
+      interaction.value.favorite = true
+      interaction.value.favoriteCount++
+      recordBehavior('favorite')
+      ElMessage.success('收藏成功')
+    }
+  } finally { favoriteLoading.value = false }
+}
+
+async function saveReview() {
+  if (!reviewForm.content.trim()) { ElMessage.warning('请填写评价内容'); return }
+  reviewSaving.value = true
+  try {
+    await courseApi.saveReview(course.value.id, { rating: reviewForm.rating, content: reviewForm.content.trim() })
+    recordBehavior('rating', reviewForm.rating)
+    await Promise.all([loadInteraction(), loadReviews(), loadCourseRating()])
+    ElMessage.success('评价已保存')
+  } finally { reviewSaving.value = false }
+}
+
+async function loadCourseRating() {
+  const res = await courseApi.getCourseById(route.params.id)
+  course.value.rating = res.data.rating
+}
+
+function recordBehavior(behaviorType, behaviorValue) {
+  courseApi.recordBehavior({ courseId: course.value.id, behaviorType, behaviorValue,
+    sessionId: localStorage.getItem('recommendationSessionId') }).catch(() => {})
+}
+
+const formatDate = value => value ? new Date(value).toLocaleString('zh-CN') : ''
 
 async function handleEnroll() {
   if (!userStore.isLoggedIn) { router.push('/auth/login'); return }
@@ -169,8 +255,18 @@ onMounted(loadCourse)
 .price { font-size: 28px; font-weight: 700; color: #f56c6c; }
 .course-includes { margin-top: 16px; }
 .course-includes > div { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; color: #606266; }
+.favorite-button { width:100%; margin:10px 0 0; }
 .detail-body { background: #fff; border-radius: 12px; padding: 24px; }
 .intro-content h3 { font-size: 16px; margin-bottom: 12px; }
 .intro-content p { color: #606266; line-height: 1.8; }
 .intro-content ul { color: #606266; padding-left: 20px; line-height: 2; }
+.review-editor { display:grid; gap:12px; padding:18px; margin-bottom:20px; background:#f8fafc; border-radius:10px; }
+.review-editor h3 { margin:0; }
+.review-editor .el-button { width:100px; }
+.review-summary { display:flex; align-items:center; gap:12px; padding:12px 0; font-size:24px; }
+.review-item { padding:16px 0; border-top:1px solid #ebeef5; }
+.review-head { display:flex; align-items:center; gap:12px; }
+.review-item p { color:#606266; line-height:1.7; }
+.review-item small { display:flex; gap:8px; align-items:center; color:#909399; }
+@media (max-width: 768px) { .detail-header { flex-direction:column; } .enroll-card { width:auto; } }
 </style>

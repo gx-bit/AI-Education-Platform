@@ -21,6 +21,18 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vue: ['vue', 'vue-router', 'pinia'],
+          element: ['element-plus', '@element-plus/icons-vue'],
+          charts: ['echarts'],
+          utilities: ['axios', 'dayjs', 'nprogress']
+        }
+      }
+    }
+  },
   server: {
     port: 3000,
     proxy: {

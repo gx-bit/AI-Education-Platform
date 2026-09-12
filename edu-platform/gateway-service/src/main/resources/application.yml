@@ -108,7 +108,7 @@ jwt:
 
 # 白名单（不需要JWT验证的路径）
 gateway:
-  white-list: /api/user/register,/api/user/login,/api/course/list,/api/course/category/list,/api/course/recommend,/api/recommendation/courses,/api/recommendation/behavior,/api/order/payment/alipay/notify,/v3/api-docs,/swagger-ui,/swagger-ui.html,/webjars
+  white-list: /api/user/register,/api/user/login,/api/recommendation/courses,/api/recommendation/behavior,/api/order/payment/alipay/notify,/v3/api-docs/**,/swagger-ui/**,/swagger-ui.html,/webjars/**
 
 # Swagger 聚合
 springdoc:

@@ -25,5 +25,11 @@ export const courseApi = {
   publishCourse: id => request.put(`/course/${id}/publish`),
   unpublishCourse: id => request.put(`/course/${id}/unpublish`),
   getPersonalizedRecommendations: params => request.get('/recommendation/courses', { params }),
-  recordBehavior: data => request.post('/recommendation/behavior', data)
+  recordBehavior: data => request.post('/recommendation/behavior', data),
+  getInteraction: id => request.get(`/course/${id}/interaction`),
+  favoriteCourse: id => request.post(`/course/${id}/favorite`),
+  unfavoriteCourse: id => request.delete(`/course/${id}/favorite`),
+  getFavorites: params => request.get('/course/favorites', { params }),
+  getReviews: (id, params) => request.get(`/course/${id}/reviews`, { params }),
+  saveReview: (id, data) => request.post(`/course/${id}/reviews`, data)
 }

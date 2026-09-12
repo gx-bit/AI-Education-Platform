@@ -12,6 +12,7 @@
           <el-menu-item index="/">首页</el-menu-item>
           <el-menu-item index="/courses">课程广场</el-menu-item>
           <el-menu-item v-if="userStore.isLoggedIn" index="/orders">我的学习</el-menu-item>
+          <el-menu-item v-if="userStore.isLoggedIn" index="/favorites">我的收藏</el-menu-item>
           <el-menu-item v-if="userStore.isAdmin" index="/admin/dashboard">管理后台</el-menu-item>
         </el-menu>
 
@@ -29,6 +30,7 @@
                 <el-dropdown-menu>
                   <el-dropdown-item command="profile">个人中心</el-dropdown-item>
                   <el-dropdown-item command="orders">我的订单</el-dropdown-item>
+                  <el-dropdown-item command="favorites">我的收藏</el-dropdown-item>
                   <el-dropdown-item v-if="userStore.isAdmin" command="admin">管理后台</el-dropdown-item>
                   <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
@@ -88,6 +90,7 @@ function handleCommand(cmd) {
   const map = {
     profile: () => router.push('/profile'),
     orders: () => router.push('/orders'),
+    favorites: () => router.push('/favorites'),
     admin: () => router.push('/admin/dashboard'),
     logout: () => userStore.logout()
   }

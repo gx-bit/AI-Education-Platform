@@ -23,6 +23,12 @@ const routes = [
         meta: { requiresAuth: true }
       },
       {
+        path: 'favorites',
+        name: 'MyFavorites',
+        component: () => import('@/views/course/MyFavoritesView.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
         path: 'payment/result',
         name: 'PaymentResult',
         component: () => import('@/views/order/PaymentResultView.vue'),

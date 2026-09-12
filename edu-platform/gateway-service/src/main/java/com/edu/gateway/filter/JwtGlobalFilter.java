@@ -12,6 +12,7 @@ import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -48,7 +49,7 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getPath();
 
         String optionalToken = getToken(exchange.getRequest());
-        if (isWhiteList(path) && !StringUtils.hasText(optionalToken)) {
+        if (isWhiteList(exchange.getRequest()) && !StringUtils.hasText(optionalToken)) {
             return chain.filter(exchange);
         }
 
@@ -83,14 +84,19 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
         return -100; // 最高优先级
     }
 
-    private boolean isWhiteList(String path) {
-    // 额外硬编码的公开路径
-    if (path.startsWith("/api/course/list") || path.startsWith("/api/course/")) {
-        return true;
+    private boolean isWhiteList(ServerHttpRequest request) {
+        String path = request.getURI().getPath();
+        if (HttpMethod.GET.equals(request.getMethod())) {
+            List<String> publicCourseQueries = List.of(
+                    "/api/course/list", "/api/course/category/list", "/api/course/recommend",
+                    "/api/course/{id}", "/api/course/{id}/goto",
+                    "/api/course/{id}/interaction", "/api/course/{id}/reviews");
+            if (publicCourseQueries.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, path))) {
+                return true;
+            }
+        }
+        return whiteList.stream().anyMatch(pattern -> path.equals(pattern) || PATH_MATCHER.match(pattern, path));
     }
-    return whiteList.stream().anyMatch(pattern ->
-            path.startsWith(pattern) || PATH_MATCHER.match(pattern, path));
-}
 
     private String getToken(ServerHttpRequest request) {
         String bearerToken = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);

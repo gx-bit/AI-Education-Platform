@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -50,6 +51,7 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(userService, "baseMapper", userMapper);
         mockUser = new User();
         mockUser.setId(1L);
         mockUser.setUsername("testuser");

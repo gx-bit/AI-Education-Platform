@@ -91,6 +91,32 @@ CREATE TABLE IF NOT EXISTS t_course (
     FULLTEXT KEY ft_title (title)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程表';
 
+CREATE TABLE IF NOT EXISTS t_course_favorite (
+    id         BIGINT   NOT NULL COMMENT '收藏ID',
+    user_id    BIGINT   NOT NULL COMMENT '用户ID',
+    course_id  BIGINT   NOT NULL COMMENT '课程ID',
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_favorite_user_course (user_id, course_id),
+    KEY idx_favorite_course (course_id),
+    KEY idx_favorite_user_time (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程收藏';
+
+CREATE TABLE IF NOT EXISTS t_course_review (
+    id         BIGINT        NOT NULL COMMENT '评价ID',
+    user_id    BIGINT        NOT NULL COMMENT '用户ID',
+    username   VARCHAR(50)   NOT NULL COMMENT '用户名快照',
+    course_id  BIGINT        NOT NULL COMMENT '课程ID',
+    rating     TINYINT       NOT NULL COMMENT '1-5分',
+    content    VARCHAR(1000) NOT NULL COMMENT '评价内容',
+    created_at DATETIME      NOT NULL,
+    updated_at DATETIME      NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_review_user_course (user_id, course_id),
+    KEY idx_review_course_time (course_id, updated_at),
+    CONSTRAINT chk_review_rating CHECK (rating BETWEEN 1 AND 5)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程评价';
+
 -- 初始分类数据
 INSERT INTO t_category (id,name,icon,parent_id,sort,status,created_at,deleted) VALUES
 (1,'编程开发','💻',0,1,1,NOW(),0),
