@@ -19,6 +19,7 @@
         <module>course-service</module>
         <module>order-service</module>
         <module>notification-service</module>
+        <module>recommendation-service</module>
     </modules>
 
     <properties>

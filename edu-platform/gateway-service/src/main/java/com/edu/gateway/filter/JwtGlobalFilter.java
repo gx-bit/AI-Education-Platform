@@ -47,13 +47,13 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
-        // 白名单直接放行
-        if (isWhiteList(path)) {
+        String optionalToken = getToken(exchange.getRequest());
+        if (isWhiteList(path) && !StringUtils.hasText(optionalToken)) {
             return chain.filter(exchange);
         }
 
-        // 获取Token
-        String token = getToken(exchange.getRequest());
+        // Authenticated calls to public endpoints still carry identity downstream.
+        String token = optionalToken;
         if (!StringUtils.hasText(token)) {
             return unauthorized(exchange, "未提供认证Token，请先登录");
         }
@@ -84,9 +84,13 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isWhiteList(String path) {
-        return whiteList.stream().anyMatch(pattern ->
-                path.startsWith(pattern) || PATH_MATCHER.match(pattern, path));
+    // 额外硬编码的公开路径
+    if (path.startsWith("/api/course/list") || path.startsWith("/api/course/")) {
+        return true;
     }
+    return whiteList.stream().anyMatch(pattern ->
+            path.startsWith(pattern) || PATH_MATCHER.match(pattern, path));
+}
 
     private String getToken(ServerHttpRequest request) {
         String bearerToken = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);

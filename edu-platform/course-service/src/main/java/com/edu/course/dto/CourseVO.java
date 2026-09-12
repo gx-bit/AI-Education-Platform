@@ -17,6 +17,7 @@ public class CourseVO {
     private String title;
     private String description;
     private String coverImage;
+    private String linkUrl;
     private Long teacherId;
     private String teacherName;
     private Long categoryId;

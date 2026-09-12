@@ -84,17 +84,43 @@ async function loadOrders() {
 }
 
 async function handlePay(order) {
-  await orderApi.payOrder(order.id)
-  ElMessage.success('支付成功')
-  loadOrders()
+  if (Number(order.amount) === 0) {
+    try {
+      await orderApi.payOrder(order.id)
+      ElMessage.success('已成功加入学习')
+      loadOrders()
+    } catch {}
+    return
+  }
+
+  const paymentWindow = window.open('', '_blank')
+  if (!paymentWindow) {
+    ElMessage.error('浏览器阻止了支付窗口，请允许本站打开弹窗')
+    return
+  }
+  try {
+    const res = await orderApi.createAlipayPayment(order.id)
+    localStorage.setItem('pendingPaymentOrderId', String(order.id))
+    paymentWindow.document.open()
+    paymentWindow.document.write(res.data.paymentForm)
+    paymentWindow.document.close()
+  } catch (e) {
+    paymentWindow.close()
+  }
 }
 
 async function handleCancel(order) {
-  await ElMessageBox.confirm('确定要取消该订单吗？', '提示', { type: 'warning' })
-  await orderApi.cancelOrder(order.id)
-  ElMessage.success('订单已取消')
-  loadOrders()
+  try {
+    await ElMessageBox.confirm('确定要取消该订单吗？', '提示', { type: 'warning' })
+    await orderApi.cancelByCourse(order.courseId) // 使用课程ID取消
+    ElMessage.success('订单已取消')
+    loadOrders()
+  } catch (e) {
+    // 忽略取消确认的取消异常
+  }
 }
+
+
 
 onMounted(loadOrders)
 </script>

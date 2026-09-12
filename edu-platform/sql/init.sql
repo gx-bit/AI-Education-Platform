@@ -112,6 +112,42 @@ INSERT INTO t_course (id,title,description,cover_image,teacher_id,teacher_name,c
 (8,'大模型应用开发','LangChain + RAG + Agent 构建AI应用','https://picsum.photos/seed/llm/400/225',3,'teacher01',3,399.00,1200,'advanced',1,1089,5.0,'LLM,AI,大模型',NOW(),NOW(),0);
 
 
+-- Recommendation feedback loop: real user signals and measurable exposures.
+USE edu_course;
+
+CREATE TABLE IF NOT EXISTS t_user_behavior (
+    id             BIGINT         NOT NULL,
+    user_id        BIGINT                  COMMENT 'Null for anonymous visitors',
+    session_id     VARCHAR(64)             COMMENT 'Anonymous browser session',
+    course_id      BIGINT         NOT NULL,
+    behavior_type  VARCHAR(32)    NOT NULL,
+    behavior_value DECIMAL(10,2),
+    context_json   JSON,
+    created_at     DATETIME       NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_behavior_user_time (user_id, created_at),
+    KEY idx_behavior_session_time (session_id, created_at),
+    KEY idx_behavior_course_type (course_id, behavior_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Recommendation user behavior';
+
+CREATE TABLE IF NOT EXISTS t_recommendation_log (
+    id             BIGINT        NOT NULL,
+    request_id     VARCHAR(64)   NOT NULL,
+    user_id        BIGINT,
+    session_id     VARCHAR(64),
+    course_id      BIGINT        NOT NULL,
+    rank_position  INT           NOT NULL,
+    score          DECIMAL(8,4)  NOT NULL,
+    reason         VARCHAR(500),
+    clicked        TINYINT       NOT NULL DEFAULT 0,
+    purchased      TINYINT       NOT NULL DEFAULT 0,
+    created_at     DATETIME      NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_rec_request (request_id),
+    KEY idx_rec_user_time (user_id, created_at),
+    KEY idx_rec_course_time (course_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Recommendation exposure and conversion log';
+
 -- ==================== edu_order ====================
 USE edu_order;
 
@@ -127,13 +163,15 @@ CREATE TABLE IF NOT EXISTS t_order (
     status       TINYINT        NOT NULL DEFAULT 0 COMMENT '0待支付1已支付2取消3退款',
     paid_at      DATETIME                COMMENT '支付时间',
     pay_method   VARCHAR(20)             COMMENT '支付方式',
+    provider_trade_no VARCHAR(64)        COMMENT '第三方支付交易号',
     created_at   DATETIME       NOT NULL,
     updated_at   DATETIME       NOT NULL,
     deleted      TINYINT        NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     UNIQUE KEY uk_order_no (order_no),
     KEY idx_user_id (user_id),
-    KEY idx_course_id (course_id)
+    KEY idx_course_id (course_id),
+    KEY idx_provider_trade_no (provider_trade_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单表';
 
 

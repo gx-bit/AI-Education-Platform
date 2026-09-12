@@ -101,6 +101,13 @@ pipeline {
                         }
                     }
                 }
+                stage('recommendation-service') {
+                    steps {
+                        script {
+                            buildAndPushImage('recommendation-service', 8085)
+                        }
+                    }
+                }
                 stage('frontend') {
                     steps {
                         script {

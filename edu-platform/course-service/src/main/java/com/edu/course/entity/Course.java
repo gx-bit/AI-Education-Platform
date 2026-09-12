@@ -25,6 +25,8 @@ public class Course implements Serializable {
 
     /** 课程封面图 */
     private String coverImage;
+    @TableField("link_url")
+    private String linkUrl;
 
     /** 讲师ID */
     private Long teacherId;

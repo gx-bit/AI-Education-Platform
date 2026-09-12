@@ -8,10 +8,12 @@ import com.edu.course.entity.Category;
 import com.edu.course.service.CourseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -33,8 +35,19 @@ public class CourseController {
 
     @Operation(summary = "获取课程详情")
     @GetMapping("/{id}")
-    public Result<CourseVO> getCourse(@PathVariable Long id) {
+    public Result<CourseVO> getCourse(@PathVariable("id") Long id) {
         return Result.success(courseService.getCourseById(id));
+    }
+
+    @Operation(summary = "跳转到课程外部链接")
+    @GetMapping("/{id}/goto")
+    public void gotoCourseLink(@PathVariable("id") Long id, HttpServletResponse response) throws IOException {
+        CourseVO course = courseService.getCourseById(id);
+        if (course == null || course.getLinkUrl() == null) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND, "课程或链接不存在");
+            return;
+        }
+        response.sendRedirect(course.getLinkUrl());
     }
 
     @Operation(summary = "获取分类列表")
@@ -69,35 +82,35 @@ public class CourseController {
     @Operation(summary = "更新课程")
     @PutMapping("/{id}")
     public Result<CourseVO> updateCourse(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody CourseRequest request) {
         return Result.success("更新成功", courseService.updateCourse(id, request));
     }
 
     @Operation(summary = "发布课程")
     @PutMapping("/{id}/publish")
-    public Result<Void> publishCourse(@PathVariable Long id) {
+    public Result<Void> publishCourse(@PathVariable("id") Long id) {
         courseService.publishCourse(id);
         return Result.success();
     }
 
     @Operation(summary = "下架课程")
     @PutMapping("/{id}/unpublish")
-    public Result<Void> unpublishCourse(@PathVariable Long id) {
+    public Result<Void> unpublishCourse(@PathVariable("id") Long id) {
         courseService.unpublishCourse(id);
         return Result.success();
     }
 
     @Operation(summary = "删除课程")
     @DeleteMapping("/{id}")
-    public Result<Void> deleteCourse(@PathVariable Long id) {
+    public Result<Void> deleteCourse(@PathVariable("id") Long id) {
         courseService.deleteCourse(id);
         return Result.success();
     }
 
     @Operation(summary = "增加学生数（内部接口）")
     @PutMapping("/{id}/student-count")
-    public Result<Void> incrementStudentCount(@PathVariable Long id) {
+    public Result<Void> incrementStudentCount(@PathVariable("id") Long id) {
         courseService.incrementStudentCount(id);
         return Result.success();
     }

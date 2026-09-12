@@ -4,10 +4,10 @@
 
     <select id="selectCourseVOPage" resultType="com.edu.course.dto.CourseVO">
         SELECT
-            c.id, c.title, c.description, c.cover_image, c.teacher_id, c.teacher_name,
-            c.category_id, cat.name AS category_name,
-            c.price, c.duration, c.level, c.status,
-            c.student_count, c.rating, c.tags, c.created_at
+    c.id, c.title, c.description, c.cover_image, c.link_url, c.teacher_id, c.teacher_name,
+    c.category_id, cat.name AS category_name,
+    c.price, c.duration, c.level, c.status,
+    c.student_count, c.rating, c.tags, c.created_at
         FROM t_course c
         LEFT JOIN t_category cat ON c.category_id = cat.id AND cat.deleted = 0
         WHERE c.deleted = 0

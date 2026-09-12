@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: recommendation-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_HOST:localhost}:8848
+        namespace: ${NACOS_NAMESPACE:}
+      config:
+        server-addr: ${NACOS_HOST:localhost}:8848
+        namespace: ${NACOS_NAMESPACE:}
+        file-extension: yaml

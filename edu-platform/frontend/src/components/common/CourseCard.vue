@@ -1,5 +1,5 @@
 <template>
-  <div class="course-card" @click="router.push(`/courses/${course.id}`)">
+  <div class="course-card" @click="goDetail(course.id)">
     <div class="cover-wrap">
       <el-image :src="course.coverImage" fit="cover" class="cover-img" lazy>
         <template #error>
@@ -31,8 +31,33 @@
           <template v-if="course.price > 0">¥{{ course.price }}</template>
           <template v-else><span style="color:#67c23a">免费</span></template>
         </span>
-        <el-button type="primary" size="small" round @click.stop="handleEnroll">
-          立即学习
+
+        <!-- 根据登录状态和购买状态显示不同按钮 -->
+        <template v-if="userStore.isLoggedIn">
+          <!-- 已购买：显示观看课程（使用后端重定向，避免风控） -->
+          <el-button
+            v-if="isPaid"
+            type="success"
+            size="small"
+            @click.stop="watchCourse(course.id)"
+          >
+            🎬 观看课程
+          </el-button>
+          <!-- 未购买但有课程链接：显示立即学习 -->
+          <el-button
+            v-else-if="course.linkUrl"
+            type="primary"
+            size="small"
+            @click.stop="handleEnroll(course)"
+          >
+            立即学习
+          </el-button>
+          <!-- 没有链接的情况 -->
+          <span v-else style="font-size:12px; color:#909399">暂无课程链接</span>
+        </template>
+        <!-- 未登录：显示登录按钮 -->
+        <el-button v-else type="primary" size="small" @click.stop="router.push('/auth/login')">
+          登录后学习
         </el-button>
       </div>
     </div>
@@ -40,15 +65,20 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { orderApi } from '@/api/order'
+import { courseApi } from '@/api/course'
 import { ElMessage } from 'element-plus'
 
 const props = defineProps({ course: { type: Object, required: true } })
 const router = useRouter()
 const userStore = useUserStore()
 
+const isPaid = ref(false)
+
+// 级别映射
 const levelMap = {
   beginner: { label: '入门', type: 'success' },
   intermediate: { label: '中级', type: 'warning' },
@@ -58,25 +88,69 @@ const levelLabel = l => levelMap[l]?.label || l
 const levelType = l => levelMap[l]?.type || ''
 const formatCount = n => n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n
 
-async function handleEnroll() {
+// 检查用户是否已购买该课程
+async function checkPaid() {
+  if (userStore.isLoggedIn && props.course.id) {
+    try {
+      const res = await orderApi.checkPurchased(props.course.id)
+      isPaid.value = res.data && res.data.paid
+    } catch {
+      isPaid.value = false
+    }
+  }
+}
+
+// 创建订单并支付（免费课自动支付）
+async function handleEnroll(course) {
   if (!userStore.isLoggedIn) {
     router.push('/auth/login')
     return
   }
   try {
-    const res = await orderApi.createOrder({ courseId: props.course.id })
+    const res = await orderApi.createOrder({ courseId: course.id })
+    recordBehavior('order')
     const orderId = res.data.id
-    if (props.course.price === 0) {
+    if (course.price === 0) {
       await orderApi.payOrder(orderId)
       ElMessage.success('已成功加入学习')
+      isPaid.value = true   // 免费课支付后立即更新状态
+      recordBehavior('purchase')
     } else {
-      router.push(`/orders`)
+      router.push('/orders')
     }
-  } catch {}
+  } catch {
+    // 错误已在请求拦截器统一处理
+  }
 }
+
+// 通过后端重定向打开课程链接，彻底避免B站风控
+function watchCourse(courseId) {
+  recordBehavior('start_learning')
+  window.open(`/api/course/${courseId}/goto`, '_blank')
+}
+
+// 点击卡片跳转到课程详情页
+function goDetail(courseId) {
+  recordBehavior('click')
+  router.push(`/courses/${courseId}`)
+}
+
+function recordBehavior(behaviorType) {
+  courseApi.recordBehavior({
+    courseId: props.course.id,
+    behaviorType,
+    requestId: props.course.recommendationRequestId,
+    sessionId: localStorage.getItem('recommendationSessionId')
+  }).catch(() => {})
+}
+
+onMounted(() => {
+  checkPaid()
+})
 </script>
 
 <style scoped>
+/* 保持原有样式不变，以下为原样照抄 */
 .course-card {
   width: 280px;
   background: #fff;
@@ -100,7 +174,8 @@ async function handleEnroll() {
 .course-title {
   font-weight: 600; font-size: 14px; line-height: 1.4;
   margin-bottom: 8px;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
 }
 .recommend-box {
   background: #f0f7ff;
@@ -114,10 +189,8 @@ async function handleEnroll() {
   color: #606266;
   font-size: 12px;
   line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
 }
 .course-teacher { color: #909399; font-size: 12px; display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
 .course-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }

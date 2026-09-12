@@ -7,7 +7,10 @@ export const useCourseStore = defineStore('course', {
     courseList: [],
     total: 0,
     loading: false,
-    aiRecommendations: []
+    aiRecommendations: [],
+    recommendationRequestId: null,
+    recommendationStrategy: null,
+    recommendationPersonalized: false
   }),
 
   actions: {
@@ -29,8 +32,32 @@ export const useCourseStore = defineStore('course', {
     },
 
     async fetchAiRecommendations(params = {}) {
-      const res = await courseApi.getAiRecommendations(params)
-      this.aiRecommendations = res.data || []
+      const sessionId = getRecommendationSessionId()
+      const res = await courseApi.getPersonalizedRecommendations({ ...params, sessionId })
+      const data = res.data || {}
+      this.recommendationRequestId = data.requestId || null
+      this.recommendationStrategy = data.strategy || null
+      this.recommendationPersonalized = Boolean(data.personalized)
+      this.aiRecommendations = (data.courses || []).map(course => ({
+        ...course,
+        recommendationRequestId: data.requestId
+      }))
+      await Promise.allSettled(this.aiRecommendations.map(course => courseApi.recordBehavior({
+        courseId: course.id,
+        behaviorType: 'impression',
+        requestId: data.requestId,
+        sessionId
+      })))
     }
   }
 })
+
+function getRecommendationSessionId() {
+  const key = 'recommendationSessionId'
+  let value = localStorage.getItem(key)
+  if (!value) {
+    value = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    localStorage.setItem(key, value)
+  }
+  return value
+}

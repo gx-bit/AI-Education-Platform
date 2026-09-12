@@ -77,6 +77,7 @@ graph TD
 | course-service | 8082 | 课程 CRUD，分类管理，Claude AI 推荐 |
 | order-service | 8083 | 订单创建/支付模拟，消息发布 |
 | notification-service | 8084 | 站内通知，消费 RabbitMQ 事件 |
+| recommendation-service | 8085 | 行为采集、用户画像、混合召回、排序与推荐反馈闭环 |
 | frontend | 80 | Vue 3 + Element Plus 管理前端 |
 | mcp-server | stdio | MCP 工具服务，供 AI Agent 调用 |
 
@@ -344,6 +345,14 @@ edu-platform/
 ```
 
 ---
+
+## 支付宝支付配置
+
+付费订单通过支付宝电脑网站支付完成。订单只有在支付宝异步通知通过 RSA2
+验签，并校验应用、商户、订单号和金额后才会更新为已支付。首次接入请使用
+`.env.example` 中的沙箱配置；`ALIPAY_NOTIFY_URL` 必须是公网可访问的 HTTPS 地址。
+
+已有数据库需要先执行 `sql/migrate-alipay-payment.sql`。
 
 ## License
 

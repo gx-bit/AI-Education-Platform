@@ -2,6 +2,7 @@ package com.edu.order.service.impl;
 
 import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.edu.common.core.exception.BusinessException;
@@ -26,9 +27,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 订单服务实现
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -40,16 +38,23 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Order createOrder(Long userId, String username, CreateOrderRequest request) {
-        // 检查是否已购买
-        long existing = count(new LambdaQueryWrapper<Order>()
+        // 查询是否已有未支付或已支付订单
+        Order existOrder = getOne(new LambdaQueryWrapper<Order>()
                 .eq(Order::getUserId, userId)
                 .eq(Order::getCourseId, request.getCourseId())
-                .in(Order::getStatus, 0, 1)); // 待支付或已支付
-        if (existing > 0) {
-            throw new BusinessException(ResultCode.ORDER_ALREADY_EXISTS);
+                .in(Order::getStatus, 0, 1)
+                .last("limit 1"));
+
+        if (existOrder != null) {
+            if (existOrder.getStatus() == 0) {
+                log.info("已有未支付订单，直接返回: orderNo={}", existOrder.getOrderNo());
+                return existOrder;
+            } else {
+                throw new BusinessException(ResultCode.ORDER_ALREADY_EXISTS);
+            }
         }
 
-        // 调用课程服务获取课程信息（带熔断）
+        // 调用课程服务获取课程信息
         Result<Map<String, Object>> courseResult = courseFeign.getCourseById(request.getCourseId());
         if (!courseResult.isSuccess() || courseResult.getData() == null) {
             throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
@@ -59,9 +64,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         String courseTitle = (String) courseData.get("title");
         String courseCover = (String) courseData.get("coverImage");
         Object priceObj = courseData.get("price");
-        BigDecimal price = priceObj != null
-                ? new BigDecimal(priceObj.toString())
-                : BigDecimal.ZERO;
+        BigDecimal price = priceObj != null ? new BigDecimal(priceObj.toString()) : BigDecimal.ZERO;
 
         Order order = new Order();
         order.setOrderNo(IdUtil.getSnowflakeNextIdStr());
@@ -71,11 +74,19 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setCourseTitle(courseTitle);
         order.setCourseCover(courseCover);
         order.setAmount(price);
-        order.setStatus(0); // 待支付
+        order.setStatus(0);
         order.setPayMethod(request.getPayMethod());
 
         save(order);
         log.info("订单创建成功: orderNo={}, userId={}, courseId={}", order.getOrderNo(), userId, request.getCourseId());
+        return order;
+    }
+
+    @Override
+    public Order getOrderByOrderNo(String orderNo) {
+        Order order = getOne(new LambdaQueryWrapper<Order>()
+                .eq(Order::getOrderNo, orderNo).last("limit 1"));
+        if (order == null) throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         return order;
     }
 
@@ -98,10 +109,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (order == null) {
             throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         }
-        // 普通用户只能查看自己的订单
-        if (userId != null && !order.getUserId().equals(userId)) {
-            throw new BusinessException(ResultCode.FORBIDDEN);
+        if (userId != null && !userId.equals(order.getUserId())) {
+            throw new BusinessException("无权访问该订单");
         }
+        // 不校验 userId，直接返回
         return order;
     }
 
@@ -109,23 +120,27 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Transactional(rollbackFor = Exception.class)
     public Order payOrder(Long orderId, Long userId) {
         Order order = getOrderById(orderId, userId);
+        if (order.getAmount() != null && order.getAmount().compareTo(BigDecimal.ZERO) > 0) {
+            throw new BusinessException("付费订单必须通过支付宝支付");
+        }
         if (order.getStatus() != 0) {
             throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
         }
 
-        // 模拟支付成功
         order.setStatus(1);
         order.setPaidAt(LocalDateTime.now());
+        order.setPayMethod("free");
+        order.setProviderTradeNo("FREE-" + order.getOrderNo());
         updateById(order);
 
-        // 通知课程服务更新学生数（Feign调用）
+        // 通知课程服务更新学生数
         try {
             courseFeign.incrementStudentCount(order.getCourseId());
         } catch (Exception e) {
             log.warn("更新课程学生数失败，将异步重试: {}", e.getMessage());
         }
 
-        // 发送支付成功消息到 RabbitMQ
+        // 发送支付成功消息
         OrderPaidEvent event = OrderPaidEvent.builder()
                 .orderId(order.getId())
                 .orderNo(order.getOrderNo())
@@ -143,8 +158,35 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 event
         );
         log.info("订单支付成功，消息已发送: orderNo={}", order.getOrderNo());
-
         return order;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean completeAlipayPayment(String orderNo, String providerTradeNo, BigDecimal paidAmount) {
+        Order order = getOrderByOrderNo(orderNo);
+        if (order.getAmount() == null || order.getAmount().compareTo(paidAmount) != 0) {
+            throw new BusinessException("支付金额与订单金额不一致");
+        }
+        if (order.getStatus() == 1) return true;
+        if (order.getStatus() != 0) throw new BusinessException(ResultCode.ORDER_STATUS_ERROR);
+
+        LocalDateTime paidAt = LocalDateTime.now();
+        boolean changed = update(new LambdaUpdateWrapper<Order>()
+                .eq(Order::getId, order.getId()).eq(Order::getStatus, 0)
+                .set(Order::getStatus, 1).set(Order::getPaidAt, paidAt)
+                .set(Order::getPayMethod, "alipay").set(Order::getProviderTradeNo, providerTradeNo));
+        if (!changed) return getById(order.getId()).getStatus() == 1;
+        order.setStatus(1); order.setPaidAt(paidAt); order.setPayMethod("alipay"); order.setProviderTradeNo(providerTradeNo);
+
+        try { courseFeign.incrementStudentCount(order.getCourseId()); }
+        catch (Exception e) { log.warn("更新课程学员数失败: {}", e.getMessage()); }
+        OrderPaidEvent event = OrderPaidEvent.builder()
+                .orderId(order.getId()).orderNo(order.getOrderNo()).userId(order.getUserId())
+                .username(order.getUsername()).courseId(order.getCourseId()).courseTitle(order.getCourseTitle())
+                .amount(order.getAmount()).paidAt(paidAt).build();
+        rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_PAID_ROUTING_KEY, event);
+        return true;
     }
 
     @Override
@@ -192,5 +234,41 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 "cancelledOrders", cancelledOrders,
                 "refundedOrders", refundedOrders
         );
+    }
+
+    @Override
+    public boolean hasPaidCourse(Long userId, Long courseId) {
+        return count(new LambdaQueryWrapper<Order>()
+                .eq(Order::getUserId, userId)
+                .eq(Order::getCourseId, courseId)
+                .eq(Order::getStatus, 1)) > 0;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Order payOrderByCourseId(Long userId, Long courseId) {
+        Order order = getOne(new LambdaQueryWrapper<Order>()
+                .eq(Order::getUserId, userId)
+                .eq(Order::getCourseId, courseId)
+                .eq(Order::getStatus, 0)
+                .last("limit 1"));
+        if (order == null) {
+            throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
+        }
+        return payOrder(order.getId(), userId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelOrderByCourseId(Long userId, Long courseId) {
+        Order order = getOne(new LambdaQueryWrapper<Order>()
+                .eq(Order::getUserId, userId)
+                .eq(Order::getCourseId, courseId)
+                .eq(Order::getStatus, 0)
+                .last("limit 1"));
+        if (order == null) {
+            throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
+        }
+        cancelOrder(order.getId(), userId);
     }
 }

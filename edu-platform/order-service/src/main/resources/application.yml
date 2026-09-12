@@ -64,3 +64,17 @@ management:
 logging:
   level:
     com.edu.order: DEBUG
+
+payment:
+  alipay:
+    enabled: ${ALIPAY_ENABLED:false}
+    gateway-url: ${ALIPAY_GATEWAY_URL:https://openapi.alipaydev.com/gateway.do}
+    app-id: ${ALIPAY_APP_ID:}
+    merchant-private-key: ${ALIPAY_MERCHANT_PRIVATE_KEY:}
+    alipay-public-key: ${ALIPAY_PUBLIC_KEY:}
+    seller-id: ${ALIPAY_SELLER_ID:}
+    notify-url: ${ALIPAY_NOTIFY_URL:}
+    return-url: ${ALIPAY_RETURN_URL:http://localhost/payment/result}
+    charset: UTF-8
+    sign-type: RSA2
+    timeout-express: 30m

@@ -6,7 +6,14 @@ import router from '@/router'
 export const useUserStore = defineStore('user', {
   state: () => ({
     token: localStorage.getItem('token') || '',
-    userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null')
+    userInfo: (() => {
+      try {
+        const raw = localStorage.getItem('userInfo');
+        return raw && raw !== 'undefined' ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    })(),
   }),
 
   getters: {
@@ -20,7 +27,7 @@ export const useUserStore = defineStore('user', {
   actions: {
     async login(credentials) {
       const res = await userApi.login(credentials)
-      this.token = res.data.token
+      this.token = res.data.accessToken
       this.userInfo = res.data.userInfo
       localStorage.setItem('token', this.token)
       localStorage.setItem('userInfo', JSON.stringify(this.userInfo))

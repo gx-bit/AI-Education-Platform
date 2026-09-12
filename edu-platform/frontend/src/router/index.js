@@ -21,6 +21,12 @@ const routes = [
         name: 'Profile',
         component: () => import('@/views/user/ProfileView.vue'),
         meta: { requiresAuth: true }
+      },
+      {
+        path: 'payment/result',
+        name: 'PaymentResult',
+        component: () => import('@/views/order/PaymentResultView.vue'),
+        meta: { requiresAuth: true }
       }
     ]
   },

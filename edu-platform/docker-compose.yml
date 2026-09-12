@@ -194,6 +194,14 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: edu
       RABBITMQ_PASS: edu123456
+      ALIPAY_ENABLED: ${ALIPAY_ENABLED:-false}
+      ALIPAY_GATEWAY_URL: ${ALIPAY_GATEWAY_URL:-https://openapi.alipaydev.com/gateway.do}
+      ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
+      ALIPAY_MERCHANT_PRIVATE_KEY: ${ALIPAY_MERCHANT_PRIVATE_KEY:-}
+      ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
+      ALIPAY_SELLER_ID: ${ALIPAY_SELLER_ID:-}
+      ALIPAY_NOTIFY_URL: ${ALIPAY_NOTIFY_URL:-}
+      ALIPAY_RETURN_URL: ${ALIPAY_RETURN_URL:-http://localhost/payment/result}
       ZIPKIN_HOST: zipkin
     depends_on:
       mysql:
@@ -230,6 +238,29 @@ services:
       nacos:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+
+  recommendation-service:
+    build:
+      context: ./recommendation-service
+      dockerfile: Dockerfile
+    container_name: edu-recommendation
+    networks: [edu-net]
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      NACOS_HOST: nacos
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-edu123456}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
         condition: service_healthy
     restart: on-failure
 

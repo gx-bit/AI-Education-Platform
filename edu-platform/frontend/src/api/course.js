@@ -23,5 +23,7 @@ export const courseApi = {
   updateCourse: (id, data) => request.put(`/course/${id}`, data),
   deleteCourse: id => request.delete(`/course/${id}`),
   publishCourse: id => request.put(`/course/${id}/publish`),
-  unpublishCourse: id => request.put(`/course/${id}/unpublish`)
+  unpublishCourse: id => request.put(`/course/${id}/unpublish`),
+  getPersonalizedRecommendations: params => request.get('/recommendation/courses', { params }),
+  recordBehavior: data => request.post('/recommendation/behavior', data)
 }

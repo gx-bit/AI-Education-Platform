@@ -47,6 +47,9 @@ public class Order implements Serializable {
     /** 支付方式（模拟：alipay/wechat） */
     private String payMethod;
 
+    /** 支付宝交易号，用于对账和退款。 */
+    private String providerTradeNo;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 
