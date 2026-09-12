@@ -45,13 +45,29 @@
     </el-card>
 
     <!-- 编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="editForm.id ? '编辑课程' : '添加课程'" width="600px">
+    <el-dialog v-model="dialogVisible" :title="editForm.id ? '编辑课程' : '添加课程'" width="720px">
       <el-form ref="formRef" :model="editForm" :rules="formRules" label-width="90px">
         <el-form-item label="课程名称" prop="title">
           <el-input v-model="editForm.title" />
         </el-form-item>
         <el-form-item label="课程描述" prop="description">
           <el-input v-model="editForm.description" type="textarea" :rows="3" />
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12"><el-form-item label="讲师姓名" prop="teacherName">
+            <el-input v-model="editForm.teacherName" placeholder="请输入课程讲师姓名" />
+          </el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="课程链接" prop="linkUrl">
+            <el-input v-model="editForm.linkUrl" placeholder="https://..." clearable />
+          </el-form-item></el-col>
+        </el-row>
+        <el-form-item label="封面图片" prop="coverImage">
+          <div class="cover-editor">
+            <el-input v-model="editForm.coverImage" placeholder="请输入封面图片 URL" clearable />
+            <el-image v-if="editForm.coverImage" :src="editForm.coverImage" fit="cover" class="cover-preview">
+              <template #error><div class="cover-error">图片无法加载</div></template>
+            </el-image>
+          </div>
         </el-form-item>
         <el-form-item label="分类" prop="categoryId">
           <el-select v-model="editForm.categoryId" style="width:100%">
@@ -98,7 +114,8 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-const editForm = reactive({ id: null, title: '', description: '', categoryId: null, price: 0, duration: 60, level: 'beginner', tags: '' })
+const emptyForm = () => ({ id: null, title: '', description: '', teacherName: '', coverImage: '', linkUrl: '', categoryId: null, price: 0, duration: 60, level: 'beginner', tags: '' })
+const editForm = reactive(emptyForm())
 
 const statusMap = { 0: { label: '草稿', type: 'info' }, 1: { label: '已发布', type: 'success' }, 2: { label: '已下架', type: 'warning' } }
 const statusLabel = s => statusMap[s]?.label || '未知'
@@ -106,12 +123,15 @@ const statusType = s => statusMap[s]?.type || ''
 
 const formRules = {
   title: [{ required: true, message: '请输入课程名称', trigger: 'blur' }],
+  teacherName: [{ required: true, message: '请输入讲师姓名', trigger: 'blur' }],
+  linkUrl: [{ type: 'url', message: '请输入有效的课程链接', trigger: 'blur' }],
+  coverImage: [{ type: 'url', message: '请输入有效的图片链接', trigger: 'blur' }],
   categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
   level: [{ required: true, message: '请选择难度', trigger: 'change' }]
 }
 
 function openDialog(row = null) {
-  Object.assign(editForm, { id: null, title: '', description: '', categoryId: null, price: 0, duration: 60, level: 'beginner', tags: '' })
+  Object.assign(editForm, emptyForm())
   if (row) Object.assign(editForm, row)
   dialogVisible.value = true
 }
@@ -172,4 +192,7 @@ onMounted(async () => {
 .page-header h2 { font-size: 22px; }
 .table-card { border-radius: 12px; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
+.cover-editor { width:100%; display:grid; grid-template-columns:1fr 180px; gap:14px; align-items:start; }
+.cover-preview { width:180px; height:100px; border-radius:8px; border:1px solid #ebeef5; }
+.cover-error { width:100%; height:100%; display:grid; place-items:center; color:#909399; background:#f5f7fa; font-size:12px; }
 </style>

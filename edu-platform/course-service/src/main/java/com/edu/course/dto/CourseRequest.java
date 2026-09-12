@@ -24,6 +24,12 @@ public class CourseRequest {
     @Schema(description = "课程封面图URL")
     private String coverImage;
 
+    @Schema(description = "课程学习链接")
+    private String linkUrl;
+
+    @Schema(description = "讲师显示名称")
+    private String teacherName;
+
     @NotNull(message = "分类ID不能为空")
     @Schema(description = "分类ID")
     private Long categoryId;

@@ -29,7 +29,7 @@
     </div>
 
     <div v-if="courseStore.loading" class="course-grid loading">
-      <el-skeleton v-for="i in 8" :key="i" animated>
+      <el-skeleton v-for="i in 9" :key="i" animated>
         <template #template>
           <el-skeleton-item variant="image" style="height:157px;border-radius:8px 8px 0 0" />
           <div style="padding:12px">
@@ -52,7 +52,7 @@
         v-model:current-page="filters.pageNum"
         v-model:page-size="filters.pageSize"
         :total="courseStore.total"
-        :page-sizes="[8, 16, 24]"
+        :page-sizes="[9, 18, 27]"
         layout="total, sizes, prev, pager, next"
         background
         @change="loadCourses"
@@ -77,7 +77,7 @@ const filters = reactive({
   level: '',
   sortBy: 'studentCount',
   pageNum: 1,
-  pageSize: 8
+  pageSize: 9
 })
 
 function handleSearch() {
@@ -111,10 +111,13 @@ onMounted(() => {
 .total-text { color: #909399; font-size: 14px; }
 .course-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 280px);
+  justify-content: space-between;
   gap: 20px;
   margin-bottom: 24px;
 }
 .course-grid.loading { opacity: .6; }
 .pagination-wrap { display: flex; justify-content: flex-end; }
+@media (max-width: 950px) { .course-grid { grid-template-columns: repeat(2, 280px); justify-content:start; } }
+@media (max-width: 620px) { .course-grid { grid-template-columns: 1fr; } }
 </style>

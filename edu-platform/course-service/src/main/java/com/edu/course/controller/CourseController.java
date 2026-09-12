@@ -83,7 +83,9 @@ public class CourseController {
         requireCourseManager();
         Long userId = UserContext.getCurrentUserId();
         String username = UserContext.getCurrentUsername();
-        CourseVO created = courseService.createCourse(request, userId, username);
+        String teacherName = UserContext.isAdmin() && request.getTeacherName() != null
+                && !request.getTeacherName().isBlank() ? request.getTeacherName().trim() : username;
+        CourseVO created = courseService.createCourse(request, userId, teacherName);
         if (UserContext.isAdmin()) {
             courseService.publishCourse(created.getId());
             created = courseService.getCourseById(created.getId());
