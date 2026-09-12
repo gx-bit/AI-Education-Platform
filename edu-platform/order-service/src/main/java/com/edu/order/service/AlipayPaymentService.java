@@ -14,6 +14,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Slf4j
@@ -25,13 +27,26 @@ public class AlipayPaymentService {
     private final OrderService orderService;
 
     public PaymentFormResponse createPagePayment(Long orderId, Long userId) {
-        AlipayClient client = requireClient();
         Order order = orderService.getOrderById(orderId, userId);
         if (order.getStatus() == 1) throw new BusinessException("订单已支付");
         if (order.getStatus() != 0) throw new BusinessException("订单状态不允许支付");
         if (order.getAmount() == null || order.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("零金额订单无需调用支付宝");
         }
+
+        if (!isConfigured()) {
+            if (!properties.isMockEnabled()) {
+                throw new BusinessException("支付宝配置不完整：请配置商户参数，或在开发环境启用本地沙箱收银台");
+            }
+            String url = properties.getMockCashierUrl()
+                    + "?orderId=" + order.getId()
+                    + "&orderNo=" + encode(order.getOrderNo())
+                    + "&amount=" + encode(order.getAmount().setScale(2).toPlainString())
+                    + "&title=" + encode(order.getCourseTitle());
+            return new PaymentFormResponse(order.getOrderNo(), "mock", null, url);
+        }
+
+        AlipayClient client = requireClient();
 
         AlipayTradePagePayModel model = new AlipayTradePagePayModel();
         model.setOutTradeNo(order.getOrderNo());
@@ -45,11 +60,18 @@ public class AlipayPaymentService {
         request.setNotifyUrl(properties.getNotifyUrl());
         request.setReturnUrl(properties.getReturnUrl());
         try {
-            return new PaymentFormResponse(order.getOrderNo(), client.pageExecute(request).getBody());
+            return new PaymentFormResponse(order.getOrderNo(), "alipay", client.pageExecute(request).getBody(), null);
         } catch (AlipayApiException e) {
             log.error("创建支付宝支付失败, orderNo={}", order.getOrderNo(), e);
             throw new BusinessException("创建支付宝支付失败，请稍后重试");
         }
+    }
+
+    public Order confirmMockPayment(Long orderId, Long userId) {
+        if (!properties.isMockEnabled()) {
+            throw new BusinessException("本地沙箱支付未启用");
+        }
+        return orderService.payOrder(orderId, userId);
     }
 
     public boolean handleNotification(Map<String, String[]> requestParameters) {
@@ -86,13 +108,18 @@ public class AlipayPaymentService {
     }
 
     private void requireConfigured() {
-        if (!properties.isEnabled() || !hasText(properties.getAppId()) ||
-                !hasText(properties.getMerchantPrivateKey()) || !hasText(properties.getAlipayPublicKey()) ||
-                !hasText(properties.getNotifyUrl())) {
+        if (!isConfigured()) {
             throw new BusinessException("支付宝配置不完整，请配置沙箱或生产商户参数");
         }
     }
 
+    private boolean isConfigured() {
+        return properties.isEnabled() && hasText(properties.getAppId()) &&
+                hasText(properties.getMerchantPrivateKey()) && hasText(properties.getAlipayPublicKey()) &&
+                hasText(properties.getNotifyUrl());
+    }
+
     private boolean hasText(String value) { return value != null && !value.isBlank(); }
+    private String encode(String value) { return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8); }
     private String limit(String value, int max) { return value.length() <= max ? value : value.substring(0, max); }
 }

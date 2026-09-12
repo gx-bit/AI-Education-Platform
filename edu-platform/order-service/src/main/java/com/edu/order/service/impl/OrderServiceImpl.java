@@ -255,6 +255,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (order == null) {
             throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         }
+        if (order.getAmount() != null && order.getAmount().signum() > 0) {
+            throw new BusinessException("付费订单必须通过支付收银台完成");
+        }
         return payOrder(order.getId(), userId);
     }
 

@@ -154,6 +154,7 @@ docker compose down
 
 ```env
 ALIPAY_ENABLED=true
+ALIPAY_MOCK_ENABLED=false
 ALIPAY_GATEWAY_URL=https://openapi.alipaydev.com/gateway.do
 ALIPAY_APP_ID=
 ALIPAY_MERCHANT_PRIVATE_KEY=
@@ -164,6 +165,8 @@ ALIPAY_RETURN_URL=http://localhost/payment/result
 ```
 
 `ALIPAY_NOTIFY_URL` 必须是支付宝能够访问的公网 HTTPS 地址。已有数据库需先执行 `sql/migrate-alipay-payment.sql`。
+
+本地开发未配置支付宝商户凭据时，Docker Compose 默认启用本地沙箱收银台，可完整演示创建支付、确认付款、订单入账和结果回跳，且不会发生真实扣款。生产环境务必设置 `ALIPAY_MOCK_ENABLED=false`，并填写支付宝开放平台提供的应用 ID、应用私钥、支付宝公钥及公网 HTTPS 异步通知地址；配置完整后系统会自动切换到真实支付宝电脑网站支付。
 
 ## 本地开发
 

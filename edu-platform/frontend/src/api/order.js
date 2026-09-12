@@ -13,6 +13,7 @@ export const orderApi = {
   createOrder: data => request.post('/order/create', data),
   payOrder: orderId => request.post(`/order/${orderId}/pay`),
   createAlipayPayment: orderId => request.post(`/order/${orderId}/payment/alipay`),
+  confirmMockPayment: orderId => request.post(`/order/${orderId}/payment/mock/confirm`),
   getPaymentStatus: orderId => request.get(`/order/${orderId}/payment/status`),
   getMyOrders: params => request.get('/order/list', { params: normalizePageParams(params) }),
   getOrderDetail: orderId => request.get(`/order/${orderId}`),

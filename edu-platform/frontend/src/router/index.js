@@ -29,6 +29,12 @@ const routes = [
         meta: { requiresAuth: true }
       },
       {
+        path: 'payment/cashier',
+        name: 'PaymentCashier',
+        component: () => import('@/views/order/PaymentCashierView.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
         path: 'payment/result',
         name: 'PaymentResult',
         component: () => import('@/views/order/PaymentResultView.vue'),

@@ -101,9 +101,13 @@ async function handlePay(order) {
   try {
     const res = await orderApi.createAlipayPayment(order.id)
     localStorage.setItem('pendingPaymentOrderId', String(order.id))
-    paymentWindow.document.open()
-    paymentWindow.document.write(res.data.paymentForm)
-    paymentWindow.document.close()
+    if (res.data.mode === 'mock') {
+      paymentWindow.location.href = res.data.paymentUrl
+    } else {
+      paymentWindow.document.open()
+      paymentWindow.document.write(res.data.paymentForm)
+      paymentWindow.document.close()
+    }
   } catch (e) {
     paymentWindow.close()
   }

@@ -68,6 +68,7 @@ logging:
 payment:
   alipay:
     enabled: ${ALIPAY_ENABLED:false}
+    mock-enabled: ${ALIPAY_MOCK_ENABLED:false}
     gateway-url: ${ALIPAY_GATEWAY_URL:https://openapi.alipaydev.com/gateway.do}
     app-id: ${ALIPAY_APP_ID:}
     merchant-private-key: ${ALIPAY_MERCHANT_PRIVATE_KEY:}
@@ -75,6 +76,7 @@ payment:
     seller-id: ${ALIPAY_SELLER_ID:}
     notify-url: ${ALIPAY_NOTIFY_URL:}
     return-url: ${ALIPAY_RETURN_URL:http://localhost/payment/result}
+    mock-cashier-url: ${ALIPAY_MOCK_CASHIER_URL:http://localhost/payment/cashier}
     charset: UTF-8
     sign-type: RSA2
     timeout-express: 30m

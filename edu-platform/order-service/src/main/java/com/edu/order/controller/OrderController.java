@@ -58,6 +58,10 @@ public class OrderController {
     @PostMapping("/{orderId}/pay")
     public Result<Order> payOrder(@PathVariable("orderId") Long orderId) {
         Long userId = UserContext.getCurrentUserId();
+        Order order = orderService.getOrderById(orderId, userId);
+        if (order.getAmount() != null && order.getAmount().signum() > 0) {
+            throw new BusinessException("付费订单必须通过支付收银台完成");
+        }
         return Result.success("支付成功", orderService.payOrder(orderId, userId));
     }
 
@@ -65,6 +69,13 @@ public class OrderController {
     @PostMapping("/{orderId}/payment/alipay")
     public Result<PaymentFormResponse> createAlipayPayment(@PathVariable("orderId") Long orderId) {
         return Result.success(alipayPaymentService.createPagePayment(orderId, UserContext.getCurrentUserId()));
+    }
+
+    @Operation(summary = "确认本地沙箱支付（仅开发环境）")
+    @PostMapping("/{orderId}/payment/mock/confirm")
+    public Result<Order> confirmMockPayment(@PathVariable("orderId") Long orderId) {
+        return Result.success("沙箱支付成功",
+                alipayPaymentService.confirmMockPayment(orderId, UserContext.getCurrentUserId()));
     }
 
     @Operation(summary = "支付宝异步通知")

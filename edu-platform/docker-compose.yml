@@ -195,6 +195,7 @@ services:
       RABBITMQ_USER: edu
       RABBITMQ_PASS: edu123456
       ALIPAY_ENABLED: ${ALIPAY_ENABLED:-false}
+      ALIPAY_MOCK_ENABLED: ${ALIPAY_MOCK_ENABLED:-true}
       ALIPAY_GATEWAY_URL: ${ALIPAY_GATEWAY_URL:-https://openapi.alipaydev.com/gateway.do}
       ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
       ALIPAY_MERCHANT_PRIVATE_KEY: ${ALIPAY_MERCHANT_PRIVATE_KEY:-}
@@ -202,6 +203,7 @@ services:
       ALIPAY_SELLER_ID: ${ALIPAY_SELLER_ID:-}
       ALIPAY_NOTIFY_URL: ${ALIPAY_NOTIFY_URL:-}
       ALIPAY_RETURN_URL: ${ALIPAY_RETURN_URL:-http://localhost/payment/result}
+      ALIPAY_MOCK_CASHIER_URL: ${ALIPAY_MOCK_CASHIER_URL:-http://localhost/payment/cashier}
       ZIPKIN_HOST: zipkin
     depends_on:
       mysql:
