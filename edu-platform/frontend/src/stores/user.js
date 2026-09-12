@@ -28,7 +28,7 @@ export const useUserStore = defineStore('user', {
     async login(credentials, remember = false) {
       const res = await userApi.login(credentials)
       this.token = res.data.accessToken
-      this.userInfo = res.data.userInfo
+      this.userInfo = res.data.userInfo || res.data.user
       const storage = remember ? localStorage : sessionStorage
       const otherStorage = remember ? sessionStorage : localStorage
       storage.setItem('token', this.token)

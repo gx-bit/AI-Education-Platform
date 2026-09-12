@@ -11,6 +11,9 @@ import com.edu.notification.entity.Notification;
 import com.edu.notification.mapper.NotificationMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/notify")
@@ -18,6 +21,28 @@ import org.springframework.web.bind.annotation.*;
 public class NotificationController {
 
     private final NotificationMapper notificationMapper;
+    private final JdbcTemplate jdbcTemplate;
+
+    @PostMapping("/admin/send")
+    public Result<Integer> send(@RequestBody Map<String, Object> body) {
+        if (!UserContext.isAdmin()) throw new BusinessException(ResultCode.FORBIDDEN);
+        String title = Objects.toString(body.get("title"), "").trim();
+        String content = Objects.toString(body.get("content"), "").trim();
+        if (title.isEmpty() || content.isEmpty()) throw new BusinessException(ResultCode.PARAM_ERROR);
+        List<Long> userIds;
+        if ("all".equals(body.get("scope"))) {
+            userIds = jdbcTemplate.queryForList("select id from edu_user.t_user where deleted=0 and status=1", Long.class);
+        } else {
+            Object userId = body.get("userId");
+            if (userId == null) throw new BusinessException(ResultCode.PARAM_ERROR);
+            userIds = List.of(Long.valueOf(userId.toString()));
+        }
+        userIds.forEach(userId -> {
+            Notification n = new Notification(); n.setUserId(userId); n.setTitle(title); n.setContent(content);
+            n.setType("system"); n.setIsRead(0); n.setCreatedAt(LocalDateTime.now()); notificationMapper.insert(n);
+        });
+        return Result.success(userIds.size());
+    }
 
     /** 查询当前登录用户的通知列表 */
     @GetMapping("/my")

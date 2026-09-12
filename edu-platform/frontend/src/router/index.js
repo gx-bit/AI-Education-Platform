@@ -57,6 +57,10 @@ const routes = [
       { path: 'dashboard', name: 'AdminDashboard', component: () => import('@/views/admin/DashboardView.vue') },
       { path: 'courses', name: 'AdminCourses', component: () => import('@/views/admin/CourseManageView.vue') },
       { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/UserManageView.vue') },
+      { path: 'orders', name: 'AdminOrders', component: () => import('@/views/admin/OrderManageView.vue') },
+      { path: 'notifications', name: 'AdminNotifications', component: () => import('@/views/admin/NotificationManageView.vue') },
+      { path: 'recommendation', name: 'AdminRecommendation', component: () => import('@/views/admin/RecommendationManageView.vue') },
+      { path: 'monitor', name: 'AdminMonitor', component: () => import('@/views/admin/SystemMonitorView.vue') },
       { path: 'stats', name: 'AdminStats', component: () => import('@/views/dashboard/DataDashboardView.vue') }
     ]
   },

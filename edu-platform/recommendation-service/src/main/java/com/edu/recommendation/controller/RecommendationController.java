@@ -7,6 +7,9 @@ import com.edu.recommendation.service.RecommendationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import com.edu.common.core.exception.BusinessException;
+import com.edu.common.core.result.ResultCode;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/recommendation")
@@ -29,4 +32,12 @@ public class RecommendationController {
         service.recordBehavior(UserContext.getCurrentUserId(), request);
         return Result.success();
     }
+
+    @GetMapping("/admin/config")
+    public Result<Map<String, Object>> getConfig() { requireAdmin(); return Result.success(service.getConfig()); }
+
+    @PutMapping("/admin/config")
+    public Result<Void> updateConfig(@RequestBody Map<String, Integer> config) { requireAdmin(); service.updateConfig(config); return Result.success(); }
+
+    private void requireAdmin() { if (!UserContext.isAdmin()) throw new BusinessException(ResultCode.FORBIDDEN); }
 }

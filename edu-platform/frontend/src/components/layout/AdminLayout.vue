@@ -14,18 +14,13 @@
         active-text-color="#fff"
         class="sidebar-menu"
       >
-        <el-menu-item index="/admin/dashboard">
-          <el-icon><DataBoard /></el-icon><span>控制台</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/courses">
-          <el-icon><Collection /></el-icon><span>课程管理</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/users">
-          <el-icon><User /></el-icon><span>用户管理</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/stats">
-          <el-icon><TrendCharts /></el-icon><span>数据统计</span>
-        </el-menu-item>
+        <el-menu-item index="/admin/dashboard"><el-icon><DataBoard /></el-icon><span>运营概览</span></el-menu-item>
+        <el-sub-menu index="content"><template #title><el-icon><Collection /></el-icon><span>内容与用户</span></template>
+          <el-menu-item index="/admin/courses">课程管理</el-menu-item><el-menu-item index="/admin/users">用户管理</el-menu-item></el-sub-menu>
+        <el-sub-menu index="operations"><template #title><el-icon><Operation /></el-icon><span>运营中心</span></template>
+          <el-menu-item index="/admin/orders">交易中心</el-menu-item><el-menu-item index="/admin/notifications">消息中心</el-menu-item><el-menu-item index="/admin/recommendation">推荐策略</el-menu-item></el-sub-menu>
+        <el-sub-menu index="analysis"><template #title><el-icon><TrendCharts /></el-icon><span>数据与系统</span></template>
+          <el-menu-item index="/admin/stats">数据分析</el-menu-item><el-menu-item index="/admin/monitor">运行监控</el-menu-item></el-sub-menu>
       </el-menu>
     </el-aside>
 
@@ -74,10 +69,14 @@ const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
 const titleMap = {
-  '/admin/dashboard': '控制台',
+  '/admin/dashboard': '运营概览',
   '/admin/courses': '课程管理',
   '/admin/users': '用户管理',
-  '/admin/stats': '数据统计'
+  '/admin/orders': '交易中心',
+  '/admin/notifications': '消息中心',
+  '/admin/recommendation': '推荐策略',
+  '/admin/monitor': '运行监控',
+  '/admin/stats': '数据分析'
 }
 const currentPageTitle = computed(() => titleMap[route.path] || '')
 

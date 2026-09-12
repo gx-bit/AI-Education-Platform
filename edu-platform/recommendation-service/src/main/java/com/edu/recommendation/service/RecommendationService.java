@@ -36,6 +36,23 @@ public class RecommendationService {
     @Value("${recommendation.quality-weight:0.08}") private double qualityWeight;
     @Value("${recommendation.level-bonus:0.03}") private double levelBonus;
 
+    public Map<String, Object> getConfig() {
+        return Map.of("strategy", "intent-first-interest-goal-v2", "interest", percent(interestWeight),
+                "goal", percent(goalWeight), "profile", percent(profileWeight), "popularity", percent(popularityWeight),
+                "quality", percent(qualityWeight), "levelBonus", percent(levelBonus));
+    }
+
+    public synchronized void updateConfig(Map<String, Integer> config) {
+        int interest = value(config, "interest"), goal = value(config, "goal"), profile = value(config, "profile");
+        int popularity = value(config, "popularity"), quality = value(config, "quality");
+        if (interest + goal + profile + popularity + quality != 100) throw new IllegalArgumentException("基础权重合计必须为100");
+        interestWeight = interest / 100d; goalWeight = goal / 100d; profileWeight = profile / 100d;
+        popularityWeight = popularity / 100d; qualityWeight = quality / 100d;
+        levelBonus = Math.max(0, Math.min(config.getOrDefault("levelBonus", 3), 10)) / 100d;
+    }
+
+    private int value(Map<String, Integer> config, String key) { return Math.max(0, Math.min(config.getOrDefault(key, 0), 100)); }
+
     @Transactional
     public RecommendationResponse recommend(Long userId, RecommendationRequest request) {
         String requestId = UUID.randomUUID().toString();
