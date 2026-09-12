@@ -1,11 +1,14 @@
 package com.edu.recommendation.dto;
 
 import lombok.*;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.math.BigDecimal;
 import java.util.Map;
 
 @Data @Builder
 public class RecommendedCourse {
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
     private String title;
     private String description;

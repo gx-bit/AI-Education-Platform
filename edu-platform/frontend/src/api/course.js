@@ -16,6 +16,7 @@ function normalizeCourseParams(params = {}) {
 
 export const courseApi = {
   getCourseList: params => request.get('/course/list', { params: normalizeCourseParams(params) }),
+  getAdminCourseList: params => request.get('/course/admin/list', { params: normalizeCourseParams(params) }),
   getCourseById: id => request.get(`/course/${id}`),
   getCategoryList: () => request.get('/course/category/list'),
   getAiRecommendations: params => request.get('/course/recommend', { params }),

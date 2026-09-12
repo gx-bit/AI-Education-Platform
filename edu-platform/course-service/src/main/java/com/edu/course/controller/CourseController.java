@@ -71,14 +71,24 @@ public class CourseController {
 
     // ===== 管理员/教师接口 =====
 
+    @GetMapping("/admin/list")
+    public Result<PageResult<CourseVO>> listAllCourses(CourseQueryRequest query) {
+        requireCourseManager();
+        return Result.success(courseService.listAllCourses(query));
+    }
+
     @Operation(summary = "创建课程")
     @PostMapping
     public Result<CourseVO> createCourse(@Valid @RequestBody CourseRequest request) {
         requireCourseManager();
         Long userId = UserContext.getCurrentUserId();
         String username = UserContext.getCurrentUsername();
-        return Result.success("创建成功",
-                courseService.createCourse(request, userId, username));
+        CourseVO created = courseService.createCourse(request, userId, username);
+        if (UserContext.isAdmin()) {
+            courseService.publishCourse(created.getId());
+            created = courseService.getCourseById(created.getId());
+        }
+        return Result.success("创建成功", created);
     }
 
     @Operation(summary = "更新课程")

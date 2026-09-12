@@ -4,17 +4,20 @@ import { ElMessage } from 'element-plus'
 import router from '@/router'
 
 export const useUserStore = defineStore('user', {
-  state: () => ({
-    token: sessionStorage.getItem('token') || localStorage.getItem('token') || '',
+  state: () => {
+    const portal = location.pathname.startsWith('/admin') ? 'admin' : 'user'
+    return ({
+    portal,
+    token: sessionStorage.getItem(`${portal}Token`) || localStorage.getItem(`${portal}Token`) || '',
     userInfo: (() => {
       try {
-        const raw = sessionStorage.getItem('userInfo') || localStorage.getItem('userInfo');
+        const raw = sessionStorage.getItem(`${portal}UserInfo`) || localStorage.getItem(`${portal}UserInfo`);
         return raw && raw !== 'undefined' ? JSON.parse(raw) : null;
       } catch {
         return null;
       }
     })(),
-  }),
+  })},
 
   getters: {
     isLoggedIn: state => !!state.token,
@@ -25,18 +28,19 @@ export const useUserStore = defineStore('user', {
   },
 
   actions: {
-    async login(credentials, remember = false) {
+    async login(credentials, remember = false, portal = 'user') {
       const res = await userApi.login(credentials)
       this.token = res.data.accessToken
       this.userInfo = res.data.userInfo || res.data.user
+      this.portal = portal
       const storage = remember ? localStorage : sessionStorage
       const otherStorage = remember ? sessionStorage : localStorage
-      storage.setItem('token', this.token)
-      storage.setItem('userInfo', JSON.stringify(this.userInfo))
-      otherStorage.removeItem('token')
-      otherStorage.removeItem('userInfo')
-      if (remember) localStorage.setItem('rememberLogin', 'true')
-      else localStorage.removeItem('rememberLogin')
+      storage.setItem(`${portal}Token`, this.token)
+      storage.setItem(`${portal}UserInfo`, JSON.stringify(this.userInfo))
+      otherStorage.removeItem(`${portal}Token`)
+      otherStorage.removeItem(`${portal}UserInfo`)
+      if (remember) localStorage.setItem(`${portal}RememberLogin`, 'true')
+      else localStorage.removeItem(`${portal}RememberLogin`)
       ElMessage.success('登录成功')
     },
 
@@ -46,11 +50,11 @@ export const useUserStore = defineStore('user', {
       } finally {
         this.token = ''
         this.userInfo = null
-        localStorage.removeItem('token')
-        localStorage.removeItem('userInfo')
-        localStorage.removeItem('rememberLogin')
-        sessionStorage.removeItem('token')
-        sessionStorage.removeItem('userInfo')
+        localStorage.removeItem(`${this.portal}Token`)
+        localStorage.removeItem(`${this.portal}UserInfo`)
+        localStorage.removeItem(`${this.portal}RememberLogin`)
+        sessionStorage.removeItem(`${this.portal}Token`)
+        sessionStorage.removeItem(`${this.portal}UserInfo`)
         router.push(target)
         ElMessage.success('已退出登录')
       }
@@ -68,8 +72,8 @@ export const useUserStore = defineStore('user', {
     },
 
     persistUserInfo() {
-      const storage = localStorage.getItem('rememberLogin') === 'true' ? localStorage : sessionStorage
-      storage.setItem('userInfo', JSON.stringify(this.userInfo))
+      const storage = localStorage.getItem(`${this.portal}RememberLogin`) === 'true' ? localStorage : sessionStorage
+      storage.setItem(`${this.portal}UserInfo`, JSON.stringify(this.userInfo))
     }
   }
 })

@@ -2,6 +2,8 @@ package com.edu.course.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,6 +15,7 @@ import java.time.LocalDateTime;
 @Schema(description = "课程信息")
 public class CourseVO {
 
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
     private String title;
     private String description;

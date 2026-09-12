@@ -2,6 +2,8 @@ package com.edu.notification.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -14,6 +16,7 @@ import java.time.LocalDateTime;
 public class Notification implements Serializable {
 
     @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /** 接收用户ID */
@@ -32,6 +35,7 @@ public class Notification implements Serializable {
     private Integer isRead;
 
     /** 关联业务ID */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long relatedId;
 
     @TableField(fill = FieldFill.INSERT)

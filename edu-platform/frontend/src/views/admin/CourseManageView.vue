@@ -119,7 +119,7 @@ function openDialog(row = null) {
 async function loadCourses() {
   loading.value = true
   try {
-    const res = await courseApi.getCourseList({ pageNum: pageNum.value, pageSize: pageSize.value })
+    const res = await courseApi.getAdminCourseList({ pageNum: pageNum.value, pageSize: pageSize.value })
     courses.value = res.data?.records || []
     total.value = res.data?.total || 0
   } finally { loading.value = false }

@@ -13,7 +13,8 @@ const request = axios.create({
 request.interceptors.request.use(
   config => {
     NProgress.start()
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token')
+    const portal = location.pathname.startsWith('/admin') ? 'admin' : 'user'
+    const token = sessionStorage.getItem(`${portal}Token`) || localStorage.getItem(`${portal}Token`)
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
     }
@@ -33,12 +34,8 @@ request.interceptors.response.use(
     if (res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('userInfo')
-        localStorage.removeItem('rememberLogin')
-        sessionStorage.removeItem('token')
-        sessionStorage.removeItem('userInfo')
-        router.push('/login')
+        clearPortalAuth()
+        router.push(location.pathname.startsWith('/admin') ? '/admin/login' : '/login')
       }
       return Promise.reject(new Error(res.message))
     }
@@ -55,15 +52,19 @@ request.interceptors.response.use(
     }
     ElMessage.error(msgMap[status] || error.message || '网络请求失败')
     if (status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('userInfo')
-      localStorage.removeItem('rememberLogin')
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('userInfo')
-      router.push('/login')
+      clearPortalAuth()
+      router.push(location.pathname.startsWith('/admin') ? '/admin/login' : '/login')
     }
     return Promise.reject(error)
   }
 )
 
 export default request
+
+function clearPortalAuth() {
+  const portal = location.pathname.startsWith('/admin') ? 'admin' : 'user'
+  for (const storage of [localStorage, sessionStorage]) {
+    storage.removeItem(`${portal}Token`); storage.removeItem(`${portal}UserInfo`)
+  }
+  localStorage.removeItem(`${portal}RememberLogin`)
+}

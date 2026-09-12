@@ -55,6 +55,21 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     }
 
     @Override
+    public PageResult<CourseVO> listAllCourses(CourseQueryRequest query) {
+        Page<Course> result = page(new Page<>(query.getPage(), query.getSize()),
+                new LambdaQueryWrapper<Course>().orderByDesc(Course::getCreatedAt));
+        List<CourseVO> records = result.getRecords().stream().map(course -> {
+            CourseVO vo = BeanCopyUtil.copyBean(course, CourseVO.class);
+            if (course.getCategoryId() != null) {
+                Category category = categoryMapper.selectById(course.getCategoryId());
+                if (category != null) vo.setCategoryName(category.getName());
+            }
+            return vo;
+        }).toList();
+        return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), records);
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public CourseVO getCourseById(Long id) {
         String cacheKey = COURSE_CACHE_PREFIX + id;

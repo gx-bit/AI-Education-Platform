@@ -178,7 +178,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public Page<User> listUsers(int page, int size, String keyword) {
+    public Page<UserVO> listUsers(int page, int size, String keyword) {
         Page<User> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(keyword)) {
@@ -187,7 +187,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     .or().like(User::getRealName, keyword);
         }
         wrapper.orderByDesc(User::getCreatedAt);
-        return page(pageParam, wrapper);
+        Page<User> users = page(pageParam, wrapper);
+        Page<UserVO> result = new Page<>(users.getCurrent(), users.getSize(), users.getTotal());
+        result.setRecords(users.getRecords().stream().map(user -> BeanCopyUtil.copyBean(user, UserVO.class)).toList());
+        return result;
     }
 
     @Override

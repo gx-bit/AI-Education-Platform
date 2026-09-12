@@ -12,6 +12,7 @@ import java.util.List;
 public interface CourseService {
 
     PageResult<CourseVO> listCourses(CourseQueryRequest query);
+    PageResult<CourseVO> listAllCourses(CourseQueryRequest query);
 
     CourseVO getCourseById(Long id);
 

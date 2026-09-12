@@ -2,6 +2,8 @@ package com.edu.order.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -15,6 +17,7 @@ import java.time.LocalDateTime;
 public class Order implements Serializable {
 
     @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /** 订单号（唯一，业务展示用） */
@@ -27,6 +30,7 @@ public class Order implements Serializable {
     private String username;
 
     /** 课程ID */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long courseId;
 
     /** 课程标题（快照） */

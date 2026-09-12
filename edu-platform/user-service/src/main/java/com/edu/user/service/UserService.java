@@ -58,7 +58,7 @@ public interface UserService {
      * @param keyword 搜索关键词
      * @return 分页用户列表
      */
-    Page<User> listUsers(int page, int size, String keyword);
+    Page<UserVO> listUsers(int page, int size, String keyword);
 
     /**
      * 修改用户状态（管理员）

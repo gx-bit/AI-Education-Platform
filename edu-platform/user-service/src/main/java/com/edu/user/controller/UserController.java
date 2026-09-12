@@ -87,13 +87,13 @@ public class UserController {
 
     @Operation(summary = "分页查询用户列表（管理员）", security = @SecurityRequirement(name = "Bearer"))
     @GetMapping("/admin/list")
-    public Result<PageResult<User>> listUsers(
+    public Result<PageResult<UserVO>> listUsers(
             @Parameter(description = "页码") @RequestParam(name = "page", defaultValue = "1") int page,
             @Parameter(description = "每页大小") @RequestParam(name = "size", defaultValue = "10") int size,
             @Parameter(description = "搜索关键词") @RequestParam(name = "keyword", required = false) String keyword) {
         requireAdmin();
-        Page<User> pageResult = userService.listUsers(page, size, keyword);
-        PageResult<User> result = PageResult.of(
+        Page<UserVO> pageResult = userService.listUsers(page, size, keyword);
+        PageResult<UserVO> result = PageResult.of(
                 pageResult.getCurrent(), pageResult.getSize(),
                 pageResult.getTotal(), pageResult.getRecords());
         return Result.success(result);
