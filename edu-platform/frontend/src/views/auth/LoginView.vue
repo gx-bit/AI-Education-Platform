@@ -48,6 +48,7 @@ async function handleLogin() {
   loading.value = true
   try {
     await userStore.login({ account: form.account, password: form.password }, form.remember)
+    if (userStore.isAdmin) { router.push('/admin/dashboard'); return }
     const redirect = route.query.redirect || '/'
     router.push(redirect)
   } finally {

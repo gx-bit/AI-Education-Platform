@@ -40,7 +40,7 @@ export const useUserStore = defineStore('user', {
       ElMessage.success('登录成功')
     },
 
-    async logout() {
+    async logout(target = '/login') {
       try {
         await userApi.logout()
       } finally {
@@ -51,7 +51,7 @@ export const useUserStore = defineStore('user', {
         localStorage.removeItem('rememberLogin')
         sessionStorage.removeItem('token')
         sessionStorage.removeItem('userInfo')
-        router.push('/login')
+        router.push(target)
         ElMessage.success('已退出登录')
       }
     },

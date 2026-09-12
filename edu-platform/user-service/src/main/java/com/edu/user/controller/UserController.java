@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.edu.common.core.result.PageResult;
 import com.edu.common.core.result.Result;
 import com.edu.common.security.context.UserContext;
+import com.edu.common.core.exception.BusinessException;
+import com.edu.common.core.result.ResultCode;
 import com.edu.user.dto.*;
 import com.edu.user.entity.User;
 import com.edu.user.service.UserService;
@@ -86,9 +88,10 @@ public class UserController {
     @Operation(summary = "分页查询用户列表（管理员）", security = @SecurityRequirement(name = "Bearer"))
     @GetMapping("/admin/list")
     public Result<PageResult<User>> listUsers(
-            @Parameter(description = "页码") @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") int size,
-            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword) {
+            @Parameter(description = "页码") @RequestParam(name = "page", defaultValue = "1") int page,
+            @Parameter(description = "每页大小") @RequestParam(name = "size", defaultValue = "10") int size,
+            @Parameter(description = "搜索关键词") @RequestParam(name = "keyword", required = false) String keyword) {
+        requireAdmin();
         Page<User> pageResult = userService.listUsers(page, size, keyword);
         PageResult<User> result = PageResult.of(
                 pageResult.getCurrent(), pageResult.getSize(),
@@ -99,10 +102,15 @@ public class UserController {
     @Operation(summary = "修改用户状态（管理员）", security = @SecurityRequirement(name = "Bearer"))
     @PutMapping("/admin/{userId}/status")
     public Result<Void> updateStatus(
-            @PathVariable Long userId,
-            @RequestParam Integer status) {
+            @PathVariable("userId") Long userId,
+            @RequestParam(name = "status") Integer status) {
+        requireAdmin();
         userService.updateStatus(userId, status);
         return Result.success();
+    }
+
+    private void requireAdmin() {
+        if (!UserContext.isAdmin()) throw new BusinessException(ResultCode.FORBIDDEN);
     }
 
     private String extractToken(HttpServletRequest request) {

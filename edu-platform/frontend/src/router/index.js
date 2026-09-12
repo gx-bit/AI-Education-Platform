@@ -48,6 +48,7 @@ const routes = [
     path: '/login',
     redirect: '/auth/login'
   },
+  { path: '/admin/login', name: 'AdminLogin', component: () => import('@/views/admin/AdminLoginView.vue') },
   {
     path: '/admin',
     component: () => import('@/components/layout/AdminLayout.vue'),
@@ -76,10 +77,16 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   NProgress.start()
   const userStore = useUserStore()
-  if (to.meta.requiresAuth && !userStore.isLoggedIn) {
-    next({ path: '/login', query: { redirect: to.fullPath } })
+  if (to.path === '/admin/login' && userStore.isAdmin) {
+    next('/admin/dashboard')
+  } else if (to.meta.requiresAdmin && !userStore.isLoggedIn) {
+    next({ path: '/admin/login', query: { redirect: to.fullPath } })
   } else if (to.meta.requiresAdmin && !userStore.isAdmin) {
     next('/')
+  } else if (userStore.isAdmin && !to.path.startsWith('/admin')) {
+    next('/admin/dashboard')
+  } else if (to.meta.requiresAuth && !userStore.isLoggedIn) {
+    next({ path: '/login', query: { redirect: to.fullPath } })
   } else {
     next()
   }

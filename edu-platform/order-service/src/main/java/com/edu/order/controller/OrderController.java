@@ -17,6 +17,8 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.edu.common.core.exception.BusinessException;
+import com.edu.common.core.result.ResultCode;
 
 @Tag(name = "订单管理", description = "选课、订单、支付相关接口")
 @RestController
@@ -120,12 +122,18 @@ public class OrderController {
             @RequestParam(name = "status", required = false) Integer status,
             @RequestParam(name = "page", defaultValue = "1") int page,
             @RequestParam(name = "size", defaultValue = "10") int size) {
+        requireAdmin();
         return Result.success(orderService.listAllOrders(status, page, size));
     }
 
     @Operation(summary = "订单统计数据（管理员）")
     @GetMapping("/admin/stats")
     public Result<Map<String, Object>> getStats() {
+        requireAdmin();
         return Result.success(orderService.getStats());
+    }
+
+    private void requireAdmin() {
+        if (!UserContext.isAdmin()) throw new BusinessException(ResultCode.FORBIDDEN);
     }
 }
