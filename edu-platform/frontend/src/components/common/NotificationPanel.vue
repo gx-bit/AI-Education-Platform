@@ -40,7 +40,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { Refresh, MoreFilled } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 
-const emit = defineEmits(['unread-change'])
+const emit = defineEmits(['unread-change', 'open-detail'])
 const router = useRouter()
 const notifications = ref([]), loading = ref(false), unreadOnly = ref(false), unreadCount = ref(0)
 const page = ref(1), total = ref(0), pageSize = 10
@@ -74,7 +74,11 @@ async function remove(item) {
   await notifyApi.deleteNotification(item.id); await loadNotifications(); ElMessage.success('通知已删除')
 }
 async function handleCommand(command, item) { if (command === 'read') await markRead(item); if (command === 'delete') await remove(item) }
-async function openNotification(item) { if (!item.isRead) await markRead(item); if (item.type === 'order') router.push('/orders') }
+async function openNotification(item) {
+  if (!item.isRead) await markRead(item)
+  emit('open-detail')
+  router.push(`/notifications/${item.id}`)
+}
 const formatTime = t => dayjs(t).format('YYYY-MM-DD HH:mm')
 onMounted(loadNotifications)
 </script>

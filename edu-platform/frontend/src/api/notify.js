@@ -11,6 +11,7 @@ function normalizePageParams(params = {}) {
 
 export const notifyApi = {
   getMyNotifications: params => request.get('/notify/my', { params: normalizePageParams(params) }),
+  getNotificationDetail: id => request.get(`/notify/${id}`),
   markAsRead: id => request.put(`/notify/${id}/read`),
   markAllAsRead: () => request.put('/notify/read-all'),
   getUnreadCount: () => request.get('/notify/unread-count'),

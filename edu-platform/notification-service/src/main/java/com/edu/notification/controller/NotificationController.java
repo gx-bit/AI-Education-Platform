@@ -63,6 +63,16 @@ public class NotificationController {
         return Result.success(count);
     }
 
+    /** 查询当前登录用户的一条通知详情 */
+    @GetMapping("/{id}")
+    public Result<Notification> detail(@PathVariable("id") Long id) {
+        Long userId = requireCurrentUserId();
+        Notification notification = notificationMapper.selectById(id);
+        if (notification == null) throw new BusinessException(ResultCode.NOT_FOUND);
+        if (!userId.equals(notification.getUserId())) throw new BusinessException(ResultCode.FORBIDDEN);
+        return Result.success(notification);
+    }
+
     private PageResult<Notification> queryNotifications(Long userId, boolean unreadOnly, int page, int size) {
         LambdaQueryWrapper<Notification> wrapper = new LambdaQueryWrapper<Notification>()
                 .eq(Notification::getUserId, userId)

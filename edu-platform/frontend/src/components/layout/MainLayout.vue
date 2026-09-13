@@ -57,7 +57,7 @@
 
     <!-- 通知抽屉 -->
     <el-drawer v-model="showNotify" title="我的通知" size="420px">
-      <NotificationPanel @unread-change="unreadCount = $event" />
+      <NotificationPanel @unread-change="unreadCount = $event" @open-detail="showNotify = false" />
     </el-drawer>
   </el-container>
 </template>
@@ -99,6 +99,7 @@ function handleCommand(cmd) {
 
 loadUnreadCount()
 watch(showNotify, value => { if (value) loadUnreadCount() })
+watch(() => route.fullPath, loadUnreadCount)
 </script>
 
 <style scoped>
