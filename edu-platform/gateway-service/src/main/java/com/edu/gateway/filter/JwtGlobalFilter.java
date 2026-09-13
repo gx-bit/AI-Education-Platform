@@ -89,7 +89,7 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
         if (HttpMethod.GET.equals(request.getMethod())) {
             List<String> publicCourseQueries = List.of(
                     "/api/course/list", "/api/course/category/list", "/api/course/recommend",
-                    "/api/course/{id}", "/api/course/{id}/goto",
+                    "/api/course/{id}", "/api/course/{id}/goto", "/api/course/{id}/outline",
                     "/api/course/{id}/interaction", "/api/course/{id}/reviews");
             if (publicCourseQueries.stream().anyMatch(pattern -> PATH_MATCHER.match(pattern, path))) {
                 return true;

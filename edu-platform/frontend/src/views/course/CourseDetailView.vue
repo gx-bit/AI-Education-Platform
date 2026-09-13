@@ -72,11 +72,22 @@
           </div>
         </el-tab-pane>
         <el-tab-pane label="课程目录" name="outline">
-          <el-timeline>
-            <el-timeline-item v-for="(item, i) in outlineItems" :key="i" :timestamp="`第${i+1}章`">
-              {{ item }}
-            </el-timeline-item>
-          </el-timeline>
+          <div class="outline-head">
+            <div><h3>课程目录</h3><p>{{ outlineMessage }}</p></div>
+            <el-button :loading="outlineLoading" @click="loadOutline(true)">重新解析</el-button>
+          </div>
+          <el-skeleton v-if="outlineLoading" :rows="6" animated />
+          <template v-else-if="outlineItems.length">
+            <el-timeline class="outline-list">
+              <el-timeline-item v-for="(item, i) in outlineItems" :key="`${i}-${item}`" :timestamp="`第 ${i + 1} 节`" type="primary">
+                {{ item }}
+              </el-timeline-item>
+            </el-timeline>
+            <div class="outline-source"><el-icon><Link /></el-icon>目录来源：{{ outlineSource }}</div>
+          </template>
+          <el-empty v-else :description="outlineMessage">
+            <el-button v-if="course.linkUrl" type="primary" plain @click="loadOutline(true)">再次尝试</el-button>
+          </el-empty>
         </el-tab-pane>
         <el-tab-pane :label="`学员评价 (${interaction.reviewCount || 0})`" name="reviews">
           <div v-if="userStore.isLoggedIn" class="review-editor">
@@ -105,7 +116,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { courseApi } from '@/api/course'
 import { orderApi } from '@/api/order'
@@ -121,6 +132,11 @@ const loading = ref(true)
 const enrollLoading = ref(false)
 const enrolled = ref(false)
 const activeTab = ref('intro')
+const outlineItems = ref([])
+const outlineLoading = ref(false)
+const outlineLoaded = ref(false)
+const outlineMessage = ref('切换到本页后，系统将访问课程链接并自动整理目录')
+const outlineSource = ref('')
 const interaction = ref({ favorite: false, favoriteCount: 0, reviewCount: 0, averageRating: null, myReview: null })
 const reviews = ref([])
 const favoriteLoading = ref(false)
@@ -133,10 +149,17 @@ const levelType = l => levelMap[l]?.type || ''
 const formatCount = n => n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n
 
 const courseTags = computed(() => course.value?.tags?.split(',').filter(Boolean) || [])
-const outlineItems = computed(() => {
-  const title = course.value?.title || ''
-  return [`${title} 基础入门`, '核心概念讲解', '实战项目一', '进阶技巧与最佳实践', '实战项目二', '综合总结与答疑']
-})
+async function loadOutline(force = false) {
+  if (!course.value || (outlineLoaded.value && !force)) return
+  outlineLoading.value = true
+  try {
+    const res = await courseApi.getCourseOutline(String(course.value.id))
+    outlineItems.value = res.data?.items || []
+    outlineMessage.value = res.data?.message || '未识别到课程目录'
+    outlineSource.value = res.data?.sourceTitle || res.data?.sourceUrl || '课程链接'
+    outlineLoaded.value = true
+  } finally { outlineLoading.value = false }
+}
 
 async function loadCourse() {
   loading.value = true
@@ -235,6 +258,7 @@ async function handleEnroll() {
 }
 
 onMounted(loadCourse)
+watch(activeTab, tab => { if (tab === 'outline') loadOutline() })
 </script>
 
 <style scoped>
@@ -278,5 +302,8 @@ onMounted(loadCourse)
 .review-head { display:flex; align-items:center; gap:12px; }
 .review-item p { color:#606266; line-height:1.7; }
 .review-item small { display:flex; gap:8px; align-items:center; color:#909399; }
+.outline-head { display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px; }
+.outline-head h3 { margin:0 0 7px; }.outline-head p { margin:0;color:#909399;font-size:13px; }
+.outline-list { padding:8px 12px 0; }.outline-source { display:flex;align-items:center;gap:6px;margin-top:8px;padding:12px 14px;border-radius:8px;background:#f5f7fa;color:#909399;font-size:12px; }
 @media (max-width: 768px) { .detail-header { flex-direction:column; } .enroll-card { width:auto; } }
 </style>

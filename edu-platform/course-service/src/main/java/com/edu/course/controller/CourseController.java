@@ -7,6 +7,7 @@ import com.edu.common.security.context.UserContext;
 import com.edu.course.dto.*;
 import com.edu.course.entity.Category;
 import com.edu.course.service.CourseService;
+import com.edu.course.service.CourseOutlineService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,6 +28,7 @@ import java.util.List;
 public class CourseController {
 
     private final CourseService courseService;
+    private final CourseOutlineService courseOutlineService;
 
     @Operation(summary = "分页查询课程列表")
     @GetMapping("/list")
@@ -38,6 +40,12 @@ public class CourseController {
     @GetMapping("/{id}")
     public Result<CourseVO> getCourse(@PathVariable("id") Long id) {
         return Result.success(courseService.getCourseById(id));
+    }
+
+    @Operation(summary = "根据课程链接自动整理课程目录")
+    @GetMapping("/{id}/outline")
+    public Result<CourseOutlineVO> getCourseOutline(@PathVariable("id") Long id) {
+        return Result.success(courseOutlineService.extract(id));
     }
 
     @Operation(summary = "跳转到课程外部链接")
