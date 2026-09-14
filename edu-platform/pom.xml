@@ -20,7 +20,6 @@
         <module>order-service</module>
         <module>notification-service</module>
         <module>recommendation-service</module>
-        <module>agent-service</module>
     </modules>
 
     <properties>

@@ -1,6 +1,6 @@
 # AI智慧教育平台
 
-基于 Spring Boot、Spring Cloud 与 Vue 3 构建的前后端分离在线教育平台。项目采用微服务架构，提供用户与课程管理、个性化课程推荐、订单与支付宝支付、站内通知、数据统计、链路追踪及 Docker Compose 一键部署能力。
+基于 **Java + Python + Vue 3** 构建的前后端分离智慧教育平台。Java 微服务负责用户、课程、订单、支付、通知、推荐等确定性业务；Python FastAPI 独立负责 AI Agent 的模型推理、工具编排、计划生成、记忆和评测，形成传统业务与智能能力边界清晰的混合架构。
 
 仓库地址：[github.com/gx-bit/AI-Education-Platform](https://github.com/gx-bit/AI-Education-Platform)
 
@@ -76,11 +76,11 @@
 
 ### 工程与运维
 
-- Spring Cloud Gateway 统一路由、JWT 鉴权、角色检查和 Redis 限流。
+- Spring Cloud Gateway 统一路由、JWT 鉴权、角色检查和 Redis 限流，并将可信用户上下文传递给 Python Agent。
 - Nacos 提供服务注册与发现，OpenFeign 完成服务间调用，Resilience4j 提供降级保护。
 - MySQL 按服务拆分业务库，MyBatis-Plus 完成数据访问，Redis 提供缓存与会话支撑。
 - Zipkin 与 Micrometer Tracing 提供分布式链路追踪，SpringDoc 提供 OpenAPI/Swagger 文档。
-- Docker Compose 一键启动前端、七个后端服务及 MySQL、Redis、RabbitMQ、Nacos、Zipkin。
+- Docker Compose 一键启动前端、六个 Java 后端服务、一个 Python Agent 服务及 MySQL、Redis、RabbitMQ、Nacos、Zipkin。
 - Nginx 托管 Vue 单页应用并代理 API，支持前端历史路由刷新。
 - Jenkinsfile 包含测试、静态分析、镜像构建、镜像推送、测试部署、冒烟验证和生产发布确认。
 - 可选 MCP Server 将课程、订单、用户和通知能力封装为 AI Agent 可调用的工具。
@@ -139,7 +139,7 @@ flowchart TD
     GW --> OS[order-service :8083]
     GW --> NS[notification-service :8084]
     GW --> RS[recommendation-service :8085]
-    GW --> AS[agent-service :8086]
+    GW --> AS[Python FastAPI agent-service :8086]
 
     US --> MYSQL[(MySQL 8)]
     CS --> MYSQL
@@ -156,7 +156,8 @@ flowchart TD
     MQ --> NS
     OS --> ALIPAY[支付宝开放平台]
 
-    GW -.服务发现.-> NACOS[Nacos]
+    GW -.Java 服务发现.-> NACOS[Nacos]
+    GW -.Docker DNS / HTTP.-> AS
     US -.链路追踪.-> ZIPKIN[Zipkin]
     CS -.链路追踪.-> ZIPKIN
     OS -.链路追踪.-> ZIPKIN
@@ -182,7 +183,7 @@ flowchart TD
 | `order-service` | 8083 | 订单、免费课程与支付宝支付 |
 | `notification-service` | 8084 | RabbitMQ 消费和站内通知 |
 | `recommendation-service` | 8085 | 行为采集、用户画像、混合排序与反馈闭环 |
-| `agent-service` | 8086 | 多轮会话、工具路由、学习计划、任务追踪、审计和评测指标 |
+| `agent-service` | 8086 | Python FastAPI；模型推理、受控工具路由、学习计划、会话记忆、审计和评测指标 |
 | `frontend` | 80 | Vue 3 用户端与管理端页面 |
 | `mcp-server` | stdio | 面向 AI Agent 的可选 MCP 工具服务 |
 
@@ -190,14 +191,15 @@ flowchart TD
 
 | 层次 | 技术 |
 | --- | --- |
-| 后端 | Java 17、Spring Boot 3.2.4、Spring Cloud 2023.0.1 |
+| 传统业务后端 | Java 17、Spring Boot 3.2.4、Spring Cloud 2023.0.1 |
+| AI Agent 后端 | Python 3.12、FastAPI、Pydantic、HTTPX、PyMySQL、Uvicorn |
 | 微服务 | Spring Cloud Gateway、Nacos、OpenFeign、LoadBalancer、Resilience4j |
 | 数据访问 | MySQL 8、MyBatis-Plus 3.5.7 |
 | 缓存与限流 | Redis 7、Spring Data Redis |
 | 消息队列 | RabbitMQ 3.12、Spring AMQP |
 | 安全 | Spring Security、JWT / JJWT 0.12.5 |
 | AI 推荐 | 混合推荐算法、余弦相似度、用户行为画像、Anthropic Claude API（可选） |
-| AI Agent | 受控工具调用、持久化会话记忆、Human-in-the-loop、模型降级、调用审计、运行评测 |
+| AI Agent | Python 编排、OpenAI 兼容模型 API、受控工具调用、持久化记忆、Human-in-the-loop、模型降级、调用审计、运行评测 |
 | 支付 | 支付宝 Java SDK、电脑网站支付、RSA2 验签 |
 | 前端 | Vue 3、Vite 5、Element Plus、Pinia、Axios、ECharts |
 | 可观测性 | Micrometer Tracing、Brave、Zipkin、SpringDoc OpenAPI |
@@ -208,7 +210,8 @@ flowchart TD
 ### 环境要求
 
 - Docker 与 Docker Compose v2
-- JDK 17 和 Maven 3.8+（本地编译时需要）
+- JDK 17 和 Maven 3.8+（本地开发 Java 服务时需要）
+- Python 3.12+（本地开发 AI Agent 时需要；Docker 启动不需要本机安装）
 - Node.js 20+（前端或 MCP 本地开发时需要）
 
 ### 1. 克隆项目
@@ -349,7 +352,7 @@ edu-platform/
 ├── order-service/             # 订单与支付服务
 ├── notification-service/      # 通知服务
 ├── recommendation-service/    # 个性化推荐服务
-├── agent-service/             # 学习 Agent、会话、工具、计划与评测
+├── agent-service/             # Python FastAPI 学习 Agent、工具编排、计划与评测
 ├── frontend/                  # Vue 3 前端
 ├── mcp-server/                # 可选 MCP 工具服务
 ├── sql/                       # 初始化与迁移脚本

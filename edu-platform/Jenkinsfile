@@ -45,6 +45,15 @@ pipeline {
             }
         }
 
+        stage('Python Agent Test') {
+            steps {
+                dir('edu-platform/agent-service') {
+                    sh 'docker build --target test -t edu-agent-test .'
+                    sh 'docker run --rm edu-agent-test'
+                }
+            }
+        }
+
         // ─────────────────────────────────────────────
         // Stage 3: Code Quality (optional SonarQube)
         // ─────────────────────────────────────────────
@@ -105,6 +114,13 @@ pipeline {
                     steps {
                         script {
                             buildAndPushImage('recommendation-service', 8085)
+                        }
+                    }
+                }
+                stage('agent-service') {
+                    steps {
+                        script {
+                            buildAndPushImage('agent-service', 8086)
                         }
                     }
                 }

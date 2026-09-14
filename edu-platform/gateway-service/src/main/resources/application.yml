@@ -80,7 +80,8 @@ spring:
             - Path=/api/recommendation/**
 
         - id: agent-service
-          uri: lb://agent-service
+          # Python FastAPI 服务不注册 Nacos，由网关通过 Docker DNS 转发。
+          uri: ${AGENT_SERVICE_URL:http://localhost:8086}
           predicates:
             - Path=/api/agent/**
 
