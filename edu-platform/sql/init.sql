@@ -13,6 +13,7 @@ CREATE DATABASE IF NOT EXISTS edu_course DEFAULT CHARACTER SET utf8mb4 COLLATE u
 CREATE DATABASE IF NOT EXISTS edu_order DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- 通知库
 CREATE DATABASE IF NOT EXISTS edu_notification DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS edu_agent DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- ==================== edu_user ====================
 USE edu_user;

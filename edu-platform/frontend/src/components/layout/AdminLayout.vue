@@ -20,7 +20,7 @@
         <el-sub-menu index="operations"><template #title><el-icon><Operation /></el-icon><span>运营中心</span></template>
           <el-menu-item index="/admin/orders">交易中心</el-menu-item><el-menu-item index="/admin/notifications">消息中心</el-menu-item><el-menu-item index="/admin/recommendation">推荐策略</el-menu-item></el-sub-menu>
         <el-sub-menu index="analysis"><template #title><el-icon><TrendCharts /></el-icon><span>数据与系统</span></template>
-          <el-menu-item index="/admin/stats">数据分析</el-menu-item><el-menu-item index="/admin/monitor">运行监控</el-menu-item></el-sub-menu>
+          <el-menu-item index="/admin/stats">数据分析</el-menu-item><el-menu-item index="/admin/agent">Agent 评测</el-menu-item><el-menu-item index="/admin/monitor">运行监控</el-menu-item></el-sub-menu>
       </el-menu>
     </el-aside>
 
@@ -76,7 +76,8 @@ const titleMap = {
   '/admin/notifications': '消息中心',
   '/admin/recommendation': '推荐策略',
   '/admin/monitor': '运行监控',
-  '/admin/stats': '数据分析'
+  '/admin/stats': '数据分析',
+  '/admin/agent': 'Agent 评测'
 }
 const currentPageTitle = computed(() => titleMap[route.path] || '')
 

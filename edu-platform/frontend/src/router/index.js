@@ -29,6 +29,12 @@ const routes = [
         meta: { requiresAuth: true }
       },
       {
+        path: 'learning-agent',
+        name: 'LearningAgent',
+        component: () => import('@/views/agent/LearningAgentView.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
         path: 'notifications/:id',
         name: 'NotificationDetail',
         component: () => import('@/views/notification/NotificationDetailView.vue'),
@@ -73,6 +79,7 @@ const routes = [
       { path: 'orders', name: 'AdminOrders', component: () => import('@/views/admin/OrderManageView.vue') },
       { path: 'notifications', name: 'AdminNotifications', component: () => import('@/views/admin/NotificationManageView.vue') },
       { path: 'recommendation', name: 'AdminRecommendation', component: () => import('@/views/admin/RecommendationManageView.vue') },
+      { path: 'agent', name: 'AdminAgent', component: () => import('@/views/admin/AgentMonitorView.vue') },
       { path: 'monitor', name: 'AdminMonitor', component: () => import('@/views/admin/SystemMonitorView.vue') },
       { path: 'stats', name: 'AdminStats', component: () => import('@/views/dashboard/DataDashboardView.vue') }
     ]

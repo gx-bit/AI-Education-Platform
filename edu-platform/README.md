@@ -6,6 +6,16 @@
 
 ## 系统功能
 
+### AI 学习智能体
+
+- 根据学习目标、兴趣、当前水平、周期和每周可用时间调用推荐服务并生成可执行计划。
+- 将计划拆成“课程学习、项目实践、面试复盘”三类周任务，支持确认、打卡、撤销和进度统计。
+- 草案必须由用户确认后才进入执行状态；涉及付费和选课的高风险动作不会自动执行。
+- 每次工具调用写入审计日志，记录动作类型、输入输出、确认要求和执行状态。
+- 支持持久化多轮对话记忆，由模型或确定性降级路由选择“课程检索、进度查询”等工具，并返回本次工具名称与耗时。
+- 管理端指标接口统计会话量、消息量、工具调用量、平均延迟和模型降级率，便于评测 Agent 的稳定性。
+- 可配置 DeepSeek、通义千问等 OpenAI 兼容接口生成个性化计划说明；未配置密钥时自动使用本地可靠降级。
+
 ### 学员端
 
 | 模块 | 已实现功能 |
@@ -70,7 +80,7 @@
 - Nacos 提供服务注册与发现，OpenFeign 完成服务间调用，Resilience4j 提供降级保护。
 - MySQL 按服务拆分业务库，MyBatis-Plus 完成数据访问，Redis 提供缓存与会话支撑。
 - Zipkin 与 Micrometer Tracing 提供分布式链路追踪，SpringDoc 提供 OpenAPI/Swagger 文档。
-- Docker Compose 一键启动前端、六个后端服务及 MySQL、Redis、RabbitMQ、Nacos、Zipkin。
+- Docker Compose 一键启动前端、七个后端服务及 MySQL、Redis、RabbitMQ、Nacos、Zipkin。
 - Nginx 托管 Vue 单页应用并代理 API，支持前端历史路由刷新。
 - Jenkinsfile 包含测试、静态分析、镜像构建、镜像推送、测试部署、冒烟验证和生产发布确认。
 - 可选 MCP Server 将课程、订单、用户和通知能力封装为 AI Agent 可调用的工具。
@@ -129,12 +139,16 @@ flowchart TD
     GW --> OS[order-service :8083]
     GW --> NS[notification-service :8084]
     GW --> RS[recommendation-service :8085]
+    GW --> AS[agent-service :8086]
 
     US --> MYSQL[(MySQL 8)]
     CS --> MYSQL
     OS --> MYSQL
     NS --> MYSQL
     RS --> MYSQL
+    AS --> MYSQL
+    AS --> RS
+    AS -.可选模型调用.-> LLM[DeepSeek / 通义千问等兼容 API]
     US --> REDIS[(Redis 7)]
     CS --> REDIS
     GW --> REDIS
@@ -151,6 +165,7 @@ flowchart TD
 ## 求职项目亮点
 
 - **可解释的混合推荐**：不是随机或固定推荐，能够展示语义、画像、热度和质量分数，并通过行为反馈持续调整结果。
+- **可执行学习 Agent**：持久化多轮会话，由模型在受控工具集合中选择课程检索或进度查询；学习计划必须人工确认，并记录工具结果、降级状态和响应耗时。
 - **完整互动闭环**：收藏与评价使用数据库唯一约束保证幂等，评价更新会在事务内重新计算课程聚合评分，并反馈给推荐画像。
 - **真实支付链路**：支付宝下单、RSA2 验签、金额与商户校验、异步回调和支付状态幂等更新组成完整支付闭环。
 - **微服务工程化**：Nacos 服务发现、Gateway 统一鉴权与限流、OpenFeign 调用、Resilience4j 降级、RabbitMQ 异步解耦。
@@ -167,6 +182,7 @@ flowchart TD
 | `order-service` | 8083 | 订单、免费课程与支付宝支付 |
 | `notification-service` | 8084 | RabbitMQ 消费和站内通知 |
 | `recommendation-service` | 8085 | 行为采集、用户画像、混合排序与反馈闭环 |
+| `agent-service` | 8086 | 多轮会话、工具路由、学习计划、任务追踪、审计和评测指标 |
 | `frontend` | 80 | Vue 3 用户端与管理端页面 |
 | `mcp-server` | stdio | 面向 AI Agent 的可选 MCP 工具服务 |
 
@@ -181,6 +197,7 @@ flowchart TD
 | 消息队列 | RabbitMQ 3.12、Spring AMQP |
 | 安全 | Spring Security、JWT / JJWT 0.12.5 |
 | AI 推荐 | 混合推荐算法、余弦相似度、用户行为画像、Anthropic Claude API（可选） |
+| AI Agent | 受控工具调用、持久化会话记忆、Human-in-the-loop、模型降级、调用审计、运行评测 |
 | 支付 | 支付宝 Java SDK、电脑网站支付、RSA2 验签 |
 | 前端 | Vue 3、Vite 5、Element Plus、Pinia、Axios、ECharts |
 | 可观测性 | Micrometer Tracing、Brave、Zipkin、SpringDoc OpenAPI |
@@ -207,13 +224,29 @@ cd AI-Education-Platform/edu-platform
 cp .env.example .env
 ```
 
-至少应修改 `.env` 中的 MySQL 密码和 JWT 密钥。Claude 与支付宝参数按需填写；不要将包含真实密钥的 `.env` 提交到 Git。
+至少应修改 `.env` 中的 MySQL 密码和 JWT 密钥。Claude、OpenAI 兼容模型与支付宝参数按需填写；不要将包含真实密钥的 `.env` 提交到 Git。
+
+Agent 可选模型配置示例：
+
+```env
+AI_BASE_URL=https://api.deepseek.com
+AI_API_KEY=your-api-key
+AI_MODEL=deepseek-chat
+```
+
+不配置上述参数时，Agent 自动切换为确定性工具路由，课程检索、计划生成和进度查询仍可使用。
 
 ### 3. 构建并启动
 
 ```bash
 mvn clean package -DskipTests
 docker compose up -d --build
+```
+
+如果本机保留了旧版 MySQL 数据卷，首次升级需执行：
+
+```bash
+docker compose exec -T mysql mysql -uroot -p"$MYSQL_PASSWORD" < sql/migrate-agent.sql
 ```
 
 ### 4. 访问服务
@@ -225,6 +258,17 @@ docker compose up -d --build
 | Nacos 控制台 | <http://localhost:8848/nacos> |
 | RabbitMQ 管理台 | <http://localhost:15672> |
 | Zipkin | <http://localhost:19411> |
+
+### 5. Agent 升级演示
+
+1. 使用普通学员账号登录，顶部进入“学习智能体”。
+2. 输入“推荐 Java 微服务课程”，观察回复中显示的 `search_courses` 工具和模型/降级来源。
+3. 填写学习目标、兴趣、水平、计划周数和每周时间，生成学习计划草案。
+4. 点击“确认并启用计划”，再完成一项任务，观察进度变化。
+5. 在对话区输入“我的计划完成多少了”，观察 `get_current_plan` 返回真实进度。
+6. 使用管理员账号进入“数据与系统 → Agent 评测”，查看会话量、工具调用量、平均延迟和模型降级率。
+
+Agent 的关键安全边界：模型不能直接修改数据库；所有工具均由后端白名单注册，数据按登录用户隔离，计划启用需要人工确认，支付和选课不会被自动执行。
 
 查看容器状态或停止服务：
 
@@ -305,6 +349,7 @@ edu-platform/
 ├── order-service/             # 订单与支付服务
 ├── notification-service/      # 通知服务
 ├── recommendation-service/    # 个性化推荐服务
+├── agent-service/             # 学习 Agent、会话、工具、计划与评测
 ├── frontend/                  # Vue 3 前端
 ├── mcp-server/                # 可选 MCP 工具服务
 ├── sql/                       # 初始化与迁移脚本

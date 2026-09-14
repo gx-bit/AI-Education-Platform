@@ -13,6 +13,7 @@
           <el-menu-item index="/courses">课程广场</el-menu-item>
           <el-menu-item v-if="userStore.isLoggedIn" index="/orders">我的学习</el-menu-item>
           <el-menu-item v-if="userStore.isLoggedIn" index="/favorites">我的收藏</el-menu-item>
+          <el-menu-item v-if="userStore.isLoggedIn" index="/learning-agent">学习智能体</el-menu-item>
           <el-menu-item v-if="userStore.isAdmin" index="/admin/dashboard">管理后台</el-menu-item>
         </el-menu>
 

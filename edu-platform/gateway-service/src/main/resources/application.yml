@@ -79,6 +79,11 @@ spring:
           predicates:
             - Path=/api/recommendation/**
 
+        - id: agent-service
+          uri: lb://agent-service
+          predicates:
+            - Path=/api/agent/**
+
         # Swagger 文档聚合
         - id: user-service-doc
           uri: lb://user-service

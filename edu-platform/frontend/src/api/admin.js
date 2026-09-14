@@ -5,5 +5,6 @@ export const adminApi = {
   getStats: () => request.get('/order/admin/stats'),
   sendNotification: data => request.post('/notify/admin/send', data),
   getRecommendationConfig: () => request.get('/recommendation/admin/config'),
-  updateRecommendationConfig: data => request.put('/recommendation/admin/config', data)
+  updateRecommendationConfig: data => request.put('/recommendation/admin/config', data),
+  getAgentMetrics: () => request.get('/agent/admin/metrics')
 }

@@ -277,3 +277,28 @@ services:
     depends_on:
       - gateway-service
     restart: on-failure
+
+  agent-service:
+    build:
+      context: ./agent-service
+      dockerfile: Dockerfile
+    container_name: edu-agent
+    networks: [edu-net]
+    ports: ["8086:8086"]
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      NACOS_HOST: nacos
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-edu123456}
+      RECOMMENDATION_BASE_URL: http://recommendation-service:8085
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-deepseek-chat}
+    depends_on:
+      mysql: { condition: service_healthy }
+      nacos: { condition: service_healthy }
+      recommendation-service: { condition: service_started }
+    restart: on-failure
